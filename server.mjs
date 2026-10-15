@@ -23,6 +23,8 @@ const routes = {
   "/app.mjs": "web/app.mjs",
   "/model.mjs": "web/model.mjs",
   "/profile.json": "profiles/dealertrack-developer.json",
+  "/profiles.json": "profiles/catalog.json",
+  "/cms-profile.json": "profiles/cms-developer.json",
   "/sample.json": "reports/sample.json",
   "/missing-prerequisites.json": "reports/missing-prerequisites.json",
 };

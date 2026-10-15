@@ -13,7 +13,7 @@ export function prepareRequest(profile, item, hire, justification) {
   const clean = Object.fromEntries(Object.entries(hire).map(([k,v])=>[k,String(v||'').trim()]));
   clean.email=normalizeEmail(clean.email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean.email)) throw Error('Enter a valid work email before preparing a request.');
-  const draft=draftRequest(item,clean);
+  const draft=draftRequest(item,clean,profile);
   if (draft.missing.length) throw Error(`Complete these details first: ${draft.missing.join(', ')}.`);
   const reason=String(justification||'').trim();
   if(reason.length<15 || reason.length>2000) throw Error('Provide a business justification between 15 and 2,000 characters.');

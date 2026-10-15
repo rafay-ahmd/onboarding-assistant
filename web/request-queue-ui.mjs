@@ -20,7 +20,7 @@ export function createRequestQueue({profile,container,notify,onChange=()=>{}}) {
     if(unavailable)return notify('Reset the unavailable request queue first.');
     try{
       pending={item,hire:{...currentHire}};
-      const defaultReason=`As a new Dealertrack software developer, I need this access to ${item.reason.charAt(0).toLowerCase()+item.reason.slice(1)}`;
+      const defaultReason=`As a new ${profile.roleLabel || 'Dealertrack software developer'}, I need this access to ${item.reason.charAt(0).toLowerCase()+item.reason.slice(1)}`;
       const prepared=prepareRequest(profile,item,pending.hire,defaultReason);
       dialog.innerHTML=`<form method="dialog"><div class="section-title"><h2>Review ${esc(item.name)}</h2><button value="cancel" class="secondary">Cancel</button></div><p class="tag">One entitlement per request</p><label>Business justification<textarea id="queue-justification" minlength="15" maxlength="2000" required>${esc(defaultReason)}</textarea></label><label>Message preview<textarea id="queue-preview" readonly>${esc(prepared.text)}</textarea></label><p>Review the employee, entitlement and justification. Adding to the queue does not send a message.</p><button id="queue-confirm" type="button">Add reviewed request to queue</button><p id="queue-review-error" role="alert"></p></form>`;
       dialog.querySelector('#queue-justification').addEventListener('input',e=>{try{dialog.querySelector('#queue-preview').value=prepareRequest(profile,item,pending.hire,e.target.value).text;dialog.querySelector('#queue-review-error').textContent='';dialog.querySelector('#queue-confirm').disabled=false;}catch(err){dialog.querySelector('#queue-confirm').disabled=true;dialog.querySelector('#queue-review-error').textContent=displayText(err.message);}});

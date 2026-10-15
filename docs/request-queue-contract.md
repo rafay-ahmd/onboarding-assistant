@@ -1,12 +1,12 @@
 # Request queue integration contract (mock v1)
 
-This document describes the original browser-local queue, preserved at `/planner`. The shared SQLite portal at `/` now has a separate platform API and temporary account/group/admin stubs; see [the implemented platform contract](hackathon-plan.md#implemented-platform-contract-track-a). Migrating this entitlement queue into that backend remains Rafay's work. No automatic email-based import connects the two stores.
+This document describes the original browser-local queue, mounted only for the CMS draft at `/planner?profile=cms-developer`. The shared SQLite portal at `/` now has a separate platform API and temporary account/group/admin stubs; see [the implemented platform contract](hackathon-plan.md#implemented-platform-contract-track-a). Migrating this entitlement queue into that backend remains Rafay's work. No automatic email-based import connects the two stores.
 
 This increment is a browser-local simulation. It sends no messages, calls no APIs and creates no real tickets. It changes neither the existing manual access state nor setup completion. No server mutation endpoints were added.
 
 ## Ownership boundary
 
-Identity/dashboard work can reuse the queue domain functions in `web/request-queue.mjs`. `web/request-queue-ui.mjs` is a small UI adapter mounted by app.mjs. `web/mock-slack-adapter.mjs` is the explicit simulation provider.
+Identity/dashboard work can reuse the queue domain functions in `web/request-queue.mjs`. `web/request-queue-ui.mjs` is a small UI adapter mounted by app.mjs only in CMS draft mode. Dealertrack uses web/live-requests.mjs and the current single-operator Slack backend; it does not read the local mock queue. `web/mock-slack-adapter.mjs` is the explicit simulation provider.
 
 For this prototype, email + profile ID + entitlement ID identifies a request and prevents a second record for the same access, including after reload. This is not an authentication boundary or a cross-device guarantee. Future persistence must use a backend-authorized immutable employee ID, tenant/profile/entitlement scope, and a unique constraint. Email changes represent a different identity in the mock. Different browser tabs are refreshed through storage events; localStorage is not a transactional multi-user database.
 
@@ -42,9 +42,15 @@ Before real implementation, agree with the identity/backend stream on actor auth
 ## Confirmed destination rules
 
 - Helpdesk entitlements: individual request per entitlement with a business justification.
-- Admin rights: existing dedicated service-desk form; never enter the Slack queue.
+- Dealertrack admin rights now use main’s connected-account Slack flow; CMS admin uses the separately confirmed #helpdesk route in its local mock queue. These stores/identities are never combined.
 - Team-routed items: remain manual until the destination is confirmed.
 - AWS: required group must be supplied and confirmed; do not assume one group suits every role.
+
+### CMS draft profile
+
+The profile selector reloads the dashboard with a fixed catalog entry. Manual plans are isolated per profile; the existing shared mock queue key and record schema are unchanged. Queue filtering/deduplication still includes profile ID and normalized email. `githubRepository`, optional `githubTeam`/`githubMirrorUser`, and `subteam` are hire-form data; it does not replace immutable hire IDs needed by the future backend.
+
+CMS Atlassian retains the documented OET form route. GitHub organization/repository requests support an Access Request ticket or #helpdesk post, per the GitHub Access guide. Per user confirmation, specific repository access and required local admin use separate posts in #helpdesk and can be simulated, alongside SonarQube and New Relic. Team-routed AWS and artifact items cannot enter this queue. Repository requests require the target repository/permission and GitHub username; a team/AD group or example GitHub user may be supplied if known. Do not invent a group; a supplied prefix-only `CMS-GH-` or wildcard value is rejected. Team names may contain spaces. Allow up to six hours for GitHub changes to fully sync before asking ET to verify; this does not authorize resend or duplicate requests. AWS/VPN needs depend on subteam. Request wording comes from the selected profile. CMS Windows/WSL, Visual Studio Code and mandatory admin are confirmed; remaining subteam requirements need review. See [CMS profile handoff](cms-profile.md).
 
 ## Still open
 
