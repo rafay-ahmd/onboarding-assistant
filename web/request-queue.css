@@ -1,0 +1,28 @@
+.request-review { width: min(740px, 94vw); max-height: 90vh; overflow: auto; border: 1px solid var(--border); border-radius: 12px; padding: 28px; color: var(--ink); font: inherit; }
+.request-review::backdrop { background: #172f276b; }
+.request-review form { display: block; }
+.request-review label { margin-top: 20px; }
+.request-review textarea { min-height: 110px; }
+.request-review #queue-preview { min-height: 230px; background: var(--subtle); }
+.request-review p { font-size: 13px; margin: 12px 0; }
+.request-review .section-title { margin-bottom: 16px; }
+.request-review .tag { margin: 0 0 8px; }
+.queue-draft { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--subtle); border: 1px solid var(--border); border-radius: 6px; padding: 16px; font: inherit; font-size: 14px; line-height: 1.6; margin: 12px 0 16px; }
+.queue-card ol { padding-left: 20px; font-size: 14px; line-height: 1.6; margin: 16px 0; }
+.queue-card li { padding-left: 4px; margin: 0 0 12px; }
+.queue-card li .fine { display: block; margin-top: 4px; }
+.queue-actions { margin-top: 20px; align-items: flex-end; }
+.queue-actions select { display: block; margin-top: 8px; }
+.queue-answer { flex: 1; min-width: 220px; }
+.queue-answer textarea { min-height: 100px; margin-bottom: 0; }
+.queue-section { border: 1px solid var(--border); background: #eef3ef; border-radius: 10px; padding: 24px; margin-bottom: 28px; }
+.queue-section > .section-title p { font-size: 13px; }
+.queue-section .empty { background: #ffffffb3; }
+.queue-section .card:last-child { margin-bottom: 0; }
+@media (max-width: 640px) {
+  .queue-section { padding: 16px; }
+  .request-review { padding: 20px; }
+  .queue-answer { min-width: 0; flex-basis: 100%; }
+  .queue-actions { align-items: stretch; }
+  .queue-actions > label { flex-basis: 100%; }
+}

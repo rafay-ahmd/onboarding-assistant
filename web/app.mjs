@@ -1,3 +1,5 @@
+import {accessCardStatus} from './request-queue.mjs';
+import {createRequestQueue} from './request-queue-ui.mjs';
 import {accessStatuses,draftRequest,dependencyStatus,reconcileCompletions,validateReport,validateTicketUrl,normalizeState} from './model.mjs';
 const profile = await fetch('/profile.json').then(r => {if(!r.ok) throw Error('Profile unavailable'); return r.json();});
 const storageKey = 'dt-onboarding-v1';
@@ -8,14 +10,39 @@ let report = null;
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function message(text){$('message').textContent=text;}
+const requestQueue=createRequestQueue({profile,container:$('request-queue'),notify:message,onChange:syncQueueCards});
+function syncQueueCards(requests){
+  for(const badge of document.querySelectorAll('[data-access-status]')){
+    const id=badge.dataset.accessStatus;
+    const actual=state.access[id].status;
+    const display=accessCardStatus(requests,profile.id,state.hire.email,id,actual);
+    badge.textContent=display.label;
+    badge.className='status '+display.status;
+    badge.title=display.simulated?'Simulated queue progress. Actual access has not been changed.':'Actual access status, recorded manually.';
+    const card=badge.closest('[data-access]');
+    const note=card.querySelector('[data-status-source]');
+    note.textContent=display.simulated?'Status updates automatically from the mock queue. No live access has been changed.':'Track this access manually until a request enters the queue.';
+    card.querySelector('[data-automatic-status]').hidden=!display.simulated;
+    card.querySelector('[data-automatic-value]').value=display.status.replaceAll('-',' ')+(display.simulated?' (simulation)':'');
+    const manual=card.querySelector('[data-manual-record]');
+    const mode=display.simulated?'automatic':'manual';
+    if(manual.dataset.mode!==mode){manual.open=!display.simulated;manual.dataset.mode=mode;}
+    card.querySelector('[data-manual-summary]').textContent=display.simulated?'Separate manual record for real access':'Manual access tracking';
+  }
+  const actualCount=profile.access.filter(x=>state.access[x.id].status==='verified').length;
+  const mockCount=requests.filter(r=>r.status==='verified').length;
+  $('access-count').textContent=mockCount+' MOCK VERIFIED · '+actualCount+' / '+profile.access.length+' REAL VERIFIED';
+}
 function persist(){state.completedSteps=reconcileCompletions(profile,state.access,state.completedSteps);try{localStorage.setItem(storageKey,JSON.stringify(state));}catch{message('Browser storage is unavailable. Keep this page open; changes will not persist.');}}
 function fillForm(){for(const [key,value] of Object.entries(state.hire)) $('hire-form').elements[key].value=value;}
 function renderAccess(){
+  requestQueue.setHire(state.hire);
   $('access-count').textContent=`${profile.access.filter(x=>state.access[x.id].status==='verified').length} / ${profile.access.length} ACCESS VERIFIED`;
   $('access-list').innerHTML=profile.access.map(item=>{
     const draft=draftRequest(item,state.hire), tracked=state.access[item.id];
-    return `<article class="card" data-access="${esc(item.id)}"><div class="card-top"><div><h3>${esc(item.name)}</h3><span class="tag">${esc(item.route==='helpdesk'?'Separate helpdesk message':item.route==='form'?'Dedicated service-desk form':'Confirm route with team')}${item.priority?' · '+esc(item.priority):''}</span></div><span class="status ${tracked.status}">${esc(tracked.status.replaceAll('-',' '))}</span></div><p>${esc(item.reason)}</p><p class="fine">Basis: ${esc(item.evidence)}</p>${draft.missing.length?`<p>Complete: ${esc(draft.missing.join(', '))} to prepare this request.</p>`:`<details><summary>${item.route==='form'?'Information for your form':item.route==='team'?'Draft for the owner':'Helpdesk draft'}</summary><textarea aria-label="${esc(item.name)} request draft" readonly>${esc(draft.text)}</textarea><button data-copy="${esc(item.id)}" class="secondary">Copy draft</button></details>`}${item.url?`<p><a class="link-button" href="${esc(item.url)}" target="_blank" rel="noopener">Open required form</a></p>`:''}<div class="card-actions"><label>Manual status<select data-status="${esc(item.id)}">${accessStatuses.map(s=>`<option value="${s}" ${s===tracked.status?'selected':''}>${s.replaceAll('-',' ')}</option>`).join('')}</select></label><label>Helpdesk ticket URL<input data-ticket="${esc(item.id)}" type="url" placeholder="https://go.helpdesk.autoscout24.com/…" value="${esc(tracked.ticket)}"></label>${tracked.ticket?`<a href="${esc(tracked.ticket)}" target="_blank" rel="noopener">View ticket ↗</a>`:''}</div></article>`;
+    return `<article class="card" data-access="${esc(item.id)}"><div class="card-top"><div><h3>${esc(item.name)}</h3><span class="tag">${esc(item.route==='helpdesk'?'Separate helpdesk message':item.route==='form'?'Dedicated service-desk form':'Confirm route with team')}${item.priority?' · '+esc(item.priority):''}</span></div><span data-access-status="${esc(item.id)}" class="status ${tracked.status}">${esc(tracked.status.replaceAll('-',' '))}</span></div><p class="fine" data-status-source></p><div data-automatic-status hidden><label>Request status (automatic)<input data-automatic-value readonly aria-label="${esc(item.name)} automatic request status"></label></div><p>${esc(item.reason)}</p><p class="fine">Basis: ${esc(item.evidence)}</p>${item.route==='helpdesk'?`<p><button class="secondary" data-review-request="${esc(item.id)}" ${draft.missing.length?'disabled':''}>Review mock request</button></p>`:''}${draft.missing.length?`<p>Complete: ${esc(draft.missing.join(', '))} to prepare this request.</p>`:`<details><summary>${item.route==='form'?'Information for your form':item.route==='team'?'Draft for the owner':'Helpdesk draft'}</summary><textarea aria-label="${esc(item.name)} request draft" readonly>${esc(draft.text)}</textarea><button data-copy="${esc(item.id)}" class="secondary">Copy draft</button></details>`}${item.url?`<p><a class="link-button" href="${esc(item.url)}" target="_blank" rel="noopener">Open required form</a></p>`:''}<details data-manual-record open><summary data-manual-summary>Manual access tracking</summary><div class="card-actions"><label>Actual access status (manual)<select data-status="${esc(item.id)}">${accessStatuses.map(s=>`<option value="${s}" ${s===tracked.status?'selected':''}>${s.replaceAll('-',' ')}</option>`).join('')}</select></label><label>Real helpdesk ticket link <span>Optional</span><input data-ticket="${esc(item.id)}" aria-label="Real helpdesk ticket link" type="url" placeholder="Paste an existing ticket URL" value="${esc(tracked.ticket)}"><span class="field-hint">Saved link only. Ticket status is not synced.</span></label>${tracked.ticket?`<a href="${esc(tracked.ticket)}" target="_blank" rel="noopener">View ticket ↗</a>`:''}</div></details></article>`;
   }).join('');
+  syncQueueCards(requestQueue.getRequests());
 }
 function renderSteps(){
   const name=id=>profile.access.find(x=>x.id===id)?.name||profile.steps.find(x=>x.id===id)?.name||id;
@@ -31,7 +58,7 @@ $('hire-form').addEventListener('input',e=>{state.hire[e.target.name]=e.target.v
 $('hire-form').addEventListener('submit',e=>e.preventDefault());
 document.querySelector('nav').addEventListener('click',e=>{const tab=e.target.dataset.tab;if(!tab)return;document.querySelectorAll('.tab').forEach(x=>x.hidden=x.id!==tab);document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('selected',x.dataset.tab===tab));message('');});
 $('access-list').addEventListener('change',e=>{const statusId=e.target.dataset.status,ticketId=e.target.dataset.ticket;if(statusId){state.access[statusId].status=e.target.value;persist();render();}if(ticketId){try{state.access[ticketId].ticket=validateTicketUrl(e.target.value);persist();renderAccess();message('Ticket link saved locally. Status is updated manually.');}catch(err){message(err.message);e.target.value=state.access[ticketId].ticket;}}});
-$('access-list').addEventListener('click',async e=>{const id=e.target.dataset.copy;if(!id)return;const draft=draftRequest(profile.access.find(x=>x.id===id),state.hire);try{await navigator.clipboard.writeText(draft.text);message('Draft copied. Review and submit it yourself; nothing was sent.');}catch{message('Clipboard unavailable. Select and copy the draft text.');}});
+$('access-list').addEventListener('click',async e=>{const reviewId=e.target.dataset.reviewRequest;if(reviewId){requestQueue.openReview(profile.access.find(x=>x.id===reviewId),state.hire);return;}const id=e.target.dataset.copy;if(!id)return;const draft=draftRequest(profile.access.find(x=>x.id===id),state.hire);try{await navigator.clipboard.writeText(draft.text);message('Draft copied. Review and submit it yourself; nothing was sent.');}catch{message('Clipboard unavailable. Select and copy the draft text.');}});
 $('step-list').addEventListener('click',e=>{const id=e.target.dataset.step;if(!id)return;const step=profile.steps.find(s=>s.id===id);if(state.completedSteps.includes(id)){const remove=new Set([id]);let changed=true;while(changed){changed=false;for(const s of profile.steps)if(!remove.has(s.id)&&s.dependsOn.some(d=>remove.has(d))){remove.add(s.id);changed=true;}}state.completedSteps=state.completedSteps.filter(x=>!remove.has(x));}else if(!dependencyStatus(step,state.access,state.completedSteps).length)state.completedSteps.push(id);persist();renderSteps();});
 $('demo').addEventListener('click',()=>{if(!confirm('Replace this browser’s saved plan with a fictional demo hire?'))return;state=normalizeState({hire:{name:'Alex Example',email:'alex@example.invalid',manager:'Taylor Example',githubUsername:'alex-example',awsGroup:'TR-RO-AWS-DEALERTRACK-DEV'}},profile);persist();fillForm();render();message('Fictional demo loaded. The example AWS group still requires EM confirmation.');});
 $('clear').addEventListener('click',()=>{if(!confirm('Clear this browser’s saved plan and imported report?'))return;state=normalizeState({},profile);report=null;persist();fillForm();render();renderReport();$('report-file').value='';message('Local plan cleared. No tickets or machine configuration were changed.');});

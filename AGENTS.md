@@ -27,7 +27,7 @@ Read README.md, package.json, and relevant implementation files before changing 
 
 - Authentication, multiple users, role-based authorization or location-based assignment.
 - Shared database or a multi-user backend. server.mjs currently serves a fixed list of static files and supports GET only.
-- Slack submission, helpdesk ticket creation, automatic status retrieval, reminders or escalation.
+- Live Slack submission, real helpdesk ticket creation, automatic status retrieval, reminders or escalation. A mock queue is now implemented (see update below).
 - Running workstation checks from the dashboard (currently run the script separately and import its JSON).
 - Automatic installations, builds, remote machine management or setup execution/resume.
 - An MCP server or direct Codex integration.
@@ -115,3 +115,18 @@ A rerun can replace machine.config and tnsnames.ora; existing app pools may be s
 - Okta VPN guide: https://trader.atlassian.net/wiki/spaces/CLOUD/pages/4891476045/AWS+Client+VPN+Transition+to+AS24+Okta+Authentication
 
 The reviewed script lists 49 clones despite docs saying 50. Older Confluence paths differ from the repository's C:\dtnsourcecode / C:\inetpub baseline. Confirm branches, current requirements and source revisions before implementing execution. Full guide verification includes saving a test application and finding it in Status, which is beyond the current inventory checker.
+
+
+## Request queue increment (October 15, 2026)
+
+Implemented on access-request-improvements: review/justification dialog, one browser-local mock request per employee/profile/entitlement, simulated delivery and failure/retry, uncertain-delivery reconciliation, follow-up questions/replies, fictional ticket creation, denial, grant and simulated verification. It does not send externally or update the existing real manual access/setup states.
+
+New modules: web/request-queue.mjs (domain), web/mock-slack-adapter.mjs (no-network transport), web/request-queue-ui.mjs (UI/persistence), web/request-queue.css. Tests: tests/request-queue.test.mjs. Read docs/request-queue-contract.md before connecting authentication, persistence, backend routes or MCP tools.
+
+The shared server remains static/GET-only; only asset routes were added. The existing state shape and storage key are unchanged. The mock queue uses its own versioned key and normalized email as a temporary identity; replace with an authorized immutable user ID and durable idempotency before live integration. Planned cross-stream API contracts remain to be agreed.
+
+Access-card display synchronization: queue changes notify app.mjs, which projects matching employee/profile/entitlement progress into clearly labelled Mock badges. Actual manual state and setup dependency rules remain unchanged; header counts distinguish actual and mock verification. See accessCardStatus and its identity-isolation test before changing this mapping.
+
+Queued access cards now use an automatic read-only status field; the unrelated manual real-access record is collapsed by default. Do not present a manual not-requested dropdown as the primary status of a completed mock request. Preserve manual data and real dependency isolation.
+
+Card styling uses shared typography, spacing, field heights and palette in web/style.css, with only queue/dialog-specific layout in request-queue.css. Request text uses the same sans-serif font as the dashboard; code commands alone use monospace. The optional real helpdesk ticket link is a bookmark only, with no status synchronization.

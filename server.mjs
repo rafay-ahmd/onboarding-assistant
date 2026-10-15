@@ -4,6 +4,10 @@ import { readFile } from "node:fs/promises";
 const root = new URL("./", import.meta.url);
 
 const routes = {
+  "/request-queue.mjs": "web/request-queue.mjs",
+  "/request-queue-ui.mjs": "web/request-queue-ui.mjs",
+  "/mock-slack-adapter.mjs": "web/mock-slack-adapter.mjs",
+  "/request-queue.css": "web/request-queue.css",
   "/": "web/index.html",
   "/style.css": "web/style.css",
   "/app.mjs": "web/app.mjs",
