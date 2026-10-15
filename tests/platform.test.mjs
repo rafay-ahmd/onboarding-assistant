@@ -16,6 +16,25 @@ function fixture(t, options) {
 }
 const rejects = (fn, status, code) => assert.throws(fn, e => e.status === status && (!code || e.code === code));
 
+test('demo role swap upgrades the seeded identity without resetting progress or other hires', t => {
+  const { store, app } = fixture(t);
+  assert.equal(app.actors().find(a => a.id === 'em-vibgy').name, 'Alex Example (demo EM)');
+  const hire = app.list('em-vibgy').items.find(h => h.location === 'Toronto');
+  assert.equal(hire.name, 'Vibgy Joseph');
+  assert.equal(app.actors().find(a => a.hireId === hire.id).role, 'hire');
+  app.account('network-toronto', hire.id, 'seed-account', { adId: 'demo', workEmail: 'demo@example.invalid', laptopId: 'demo' });
+  const before = app.get('em-vibgy', hire.id);
+  // Reproduce the old seed labels to exercise the upgrade on an existing database.
+  store.put('actors', { ...store.get('actors', 'em-vibgy'), name: 'Vibgy (demo EM)' });
+  store.put('hires', { ...store.get('hires', hire.id), name: 'Alex Example' });
+  const extra = app.create('em-vibgy', 'unrelated', { ...input, name: 'Alex Example' });
+  seedDemo(store);
+  assert.deepEqual(app.get('em-vibgy', hire.id), before);
+  assert.equal(app.get('em-vibgy', extra.id).name, 'Alex Example');
+  seedDemo(store);
+  assert.equal(app.list('em-vibgy').items.length, 3);
+});
+
 test('structured names preserve compound names and validate both fields without splitting legacy records', t => {
   const { app } = fixture(t);
   const { name, ...fields } = input;

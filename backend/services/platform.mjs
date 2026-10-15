@@ -157,15 +157,33 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
 
 export function seedDemo(store) {
   const actors = [
-    { id: 'em-vibgy', name: 'Vibgy (demo EM)', role: 'em', locations },
+    { id: 'em-vibgy', name: 'Alex Example (demo EM)', role: 'em', locations },
     { id: 'em-other', name: 'Morgan (other demo EM)', role: 'em', locations },
     { id: 'network-toronto', name: 'Toronto network (demo)', role: 'network', locations: ['Toronto'] },
     { id: 'network-berlin', name: 'Berlin network (demo)', role: 'network', locations: ['Berlin'] }
   ];
-  store.transaction(() => { for (const a of actors) if (!store.get('actors', a.id)) store.put('actors', a); });
+  store.transaction(() => {
+    for (const a of actors) {
+      const existing = store.get('actors', a.id);
+      if (!existing || (a.id === 'em-vibgy' && existing.name === 'Vibgy (demo EM)')) store.put('actors', a);
+    }
+  });
   const platform = createPlatform(store);
-  for (const [index, location] of locations.entries()) platform.create('em-vibgy', `seed-hire-${location}-v1`, {
+  // Keep v1 command payloads stable so startup can replay receipts from existing databases.
+  for (const [index, location] of locations.entries()) {
+    const seeded = platform.create('em-vibgy', `seed-hire-${location}-v1`, {
     name: index ? 'Jamie Example' : 'Alex Example', email: '', startDate: '2026-11-02', location, profileId,
     requestedGroups: [`DEMO-${location.toUpperCase()}-DEVELOPERS`], adminRequired: !index
-  });
+    });
+    if (!index) store.transaction(() => {
+      const hire = store.get('hires', seeded.id);
+      if (hire.name !== 'Alex Example') return;
+      // Only upgrade the identified fictional seed, preserving all workflow progress and IDs.
+      store.put('hires', { ...hire, firstName: 'Vibgy', lastName: 'Joseph', name: 'Vibgy Joseph' });
+      const hireActor = store.get('actors', `hire-${hire.id}`);
+      store.put('actors', { ...hireActor, name: 'Vibgy Joseph (demo hire)' });
+      const accountRequest = store.list('requests', { hireId: hire.id }).find(r => r.kind === 'account');
+      if (accountRequest) store.put('requests', { ...accountRequest, payload: { ...accountRequest.payload, firstName: 'Vibgy', lastName: 'Joseph', name: 'Vibgy Joseph' } });
+    });
+  }
 }

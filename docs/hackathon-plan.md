@@ -171,6 +171,8 @@ Runtime: Node 24+, built-in `node:sqlite`, no package dependencies. `npm start` 
 
 ### Sameer: HTTP integration
 
+Demo role update: Alex Example is now the EM and Vibgy Joseph the Toronto hire. The legacy actor ID `em-vibgy` is retained as an opaque identifier for compatibility. Use actor discovery for labels, not assumptions based on IDs. Startup/seed updates only the identified original fictional hire and EM labels, preserving IDs and workflow progress. Commit seeds/migrations to share the initial dataset; local DB edits do not sync through Git and SQLite files remain ignored.
+
 Use base URL `http://127.0.0.1:4173`. All successful operations currently return HTTP 200 with `{ "data": ... }`. Errors use the envelope defined above. Discover actors through `GET /api/demo/actors`; configure one actor per MCP session. Known seed IDs: `em-vibgy`, `em-other`, `network-toronto`, `network-berlin`. Each created hire gets a persistent self-only actor `hire-<hireId>`, also available from discovery. The demo actor discovery response is capped at 100 actors; this is intended for small local demos.
 
 Send `X-Demo-Actor-Id` for all other operations. Mutations require JSON content type and an explicit `Idempotency-Key` (1–200 characters). Retain the same key after an ambiguous response. Reusing a key with different data returns 409; replay returns the original saved response, not a fresh status snapshot. Follow with GET for current progress. HTTP clients without Origin are supported; browsers must use this portal's origin. No CORS access is enabled.
