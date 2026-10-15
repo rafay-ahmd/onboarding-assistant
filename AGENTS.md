@@ -13,6 +13,8 @@ Read README.md, package.json, and relevant implementation files before changing 
 
 Track A now adds a shared SQLite portal at `/`, using Node 24+ built-in SQLite and API/service modules under `backend/`. EM, network-by-location and self-only hire views use seeded demo impersonation with backend scope checks. Account/device entry, immutable hire IDs, transactional command idempotency, events, seed/reset commands and temporary account/group/admin workflow stubs are implemented. The original browser-local planner below is preserved at `/planner`; its data and real setup dependencies remain separate. See the implemented contract and evidence in `docs/hackathon-plan.md` before changing the API.
 
+The portal now collects `firstName` and `lastName` separately, preserving `name` as the joined display field. Name-only API callers and historical records remain compatible; never infer name parts from existing display names. Demo switching lives in the top-right profile circle, with a tab-local saved account and role-specific workspace copy/layout. Keep explicit simulation labels on provider outcomes.
+
 - A buildless browser dashboard served by a small Node.js HTTP server on loopback, port 4173 by default.
 - A single draft Dealertrack developer profile: access requirements, routing, required fields, setup steps and dependencies.
 - A shared new-hire details form. It fills request drafts; it is not an EM login or workflow trigger.

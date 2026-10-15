@@ -95,7 +95,11 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
     create(actorId, key, body) {
       return mutate(actorId, 'create-hire', key, body, acting => {
         requireValue(acting.role === 'em', 403, 'FORBIDDEN', 'Only an EM can create a hire.');
-        const name = text(body.name, 'employee name');
+        // Keep legacy name-only clients working while MCP moves to separate name fields.
+        const structuredName = body.firstName !== undefined || body.lastName !== undefined;
+        const firstName = structuredName ? text(body.firstName, 'first name') : undefined;
+        const lastName = structuredName ? text(body.lastName, 'last name') : undefined;
+        const name = structuredName ? `${firstName} ${lastName}` : text(body.name, 'employee name');
         const email = text(body.email ?? '', 'email', true);
         requireValue(!email || emailPattern.test(email), 400, 'INVALID_INPUT', 'Provide a valid email or leave it empty.');
         requireValue(locations.includes(body.location) && acting.locations.includes(body.location), 400, 'INVALID_INPUT', 'Choose a permitted location.');
@@ -107,8 +111,9 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
         requireValue(typeof body.adminRequired === 'boolean', 400, 'INVALID_INPUT', 'adminRequired must be true or false.');
         const hire = { id: id(), name, email, startDate: body.startDate, managerId: acting.id, location: body.location,
           profileId, requestedGroups, adminRequired: body.adminRequired, createdAt: now() };
+        if (structuredName) Object.assign(hire, { firstName, lastName });
         store.put('hires', hire);
-        request(acting, hire, 'account', 'account', { name, location: hire.location, startDate: hire.startDate });
+        request(acting, hire, 'account', 'account', { name, ...(structuredName ? { firstName, lastName } : {}), location: hire.location, startDate: hire.startDate });
         event(acting, hire.id, 'hire-created', hire.id);
         store.put('actors', { id: `hire-${hire.id}`, name: `${hire.name} (demo hire)`, role: 'hire', locations: [], hireId: hire.id });
         return detail(acting, hire.id);

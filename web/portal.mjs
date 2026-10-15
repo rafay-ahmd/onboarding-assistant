@@ -2,6 +2,7 @@ const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 let actors = [], actorId = '', selectedId = '', hires = [], nextOffset = null, version = 0;
 let busy = false;
+try { actorId = sessionStorage.getItem('onboarding-demo-actor') || ''; } catch { /* Selection still works without browser storage. */ }
 const pendingCommands = new Map();
 function feedback(message, error = false) { $('feedback').textContent = message; $('feedback').dataset.error = String(error); }
 async function api(path, method = 'GET', body) {
@@ -24,21 +25,39 @@ async function api(path, method = 'GET', body) {
   return payload.data;
 }
 function currentActor() { return actors.find(a => a.id === actorId); }
+const displayName = actor => actor.name.replace(/\s*\([^)]*\)/g, '').trim();
+const roleLabel = actor => actor.role === 'em' ? 'Engineering manager' : actor.role === 'network' ? `Network team · ${actor.locations.join(', ')}` : 'Team member';
+const initials = actor => displayName(actor).split(/\s+/).slice(0, 2).map(word => word[0]).join('').toUpperCase();
+function renderProfile() {
+  const actor = currentActor();
+  $('profile-initials').textContent = initials(actor);
+  $('profile-name').textContent = displayName(actor);
+  $('profile-role').textContent = roleLabel(actor);
+  $('profile-toggle').setAttribute('aria-label', `Profile: ${displayName(actor)}. Switch account`);
+  $('profile-accounts').innerHTML = actors.map(a => `<button class="account-option" data-actor="${esc(a.id)}" aria-pressed="${a.id === actorId}" ${busy ? 'disabled' : ''}><span class="avatar" aria-hidden="true">${esc(initials(a))}</span><span>${esc(displayName(a))}<small>${esc(roleLabel(a))}</small></span></button>`).join('');
+}
 async function loadActors() {
   actors = await api('/api/demo/actors');
-  $('actor').innerHTML = actors.map(a => `<option value="${esc(a.id)}">${esc(a.name)} · ${esc(a.role)}</option>`).join('');
   if (!actors.some(a => a.id === actorId)) actorId = actors[0]?.id || '';
-  $('actor').value = actorId;
+  renderProfile();
 }
 function renderList() {
-  $('hires').innerHTML = hires.length ? hires.map(h => `<button class="hire-choice" data-hire="${esc(h.id)}" aria-pressed="${h.id === selectedId}"><strong>${esc(h.name)}</strong><span>${esc(h.location)} · ${esc(h.startDate)}</span><span>${h.adminRequired ? 'Admin access required' : 'Standard access'}</span></button>`).join('') : '<p>No hires are assigned to this actor yet.</p>';
-  $('list-summary').textContent = `${hires.length} visible hire${hires.length === 1 ? '' : 's'} · filtered by your demo role`;
+  $('hires').innerHTML = hires.length ? hires.map(h => `<button class="hire-choice" data-hire="${esc(h.id)}" aria-pressed="${h.id === selectedId}"><strong>${esc(h.name)}</strong><span>${esc(h.location)} · ${esc(h.startDate)}</span><span>${h.adminRequired ? 'Admin access required' : 'Standard access'}</span></button>`).join('') : '<p>No onboarding plans yet.</p>';
+  $('list-summary').textContent = currentActor().role === 'hire' ? 'Your account, device and access progress in one place.' : `${hires.length} teammate${hires.length === 1 ? '' : 's'}${currentActor().role === 'network' ? ' assigned to your location' : ' joining your team'}`;
   $('more').hidden = nextOffset === null;
 }
 async function refresh({ more = false } = {}) {
   const token = ++version;
   const actor = currentActor();
+  const personal = actor.role === 'hire';
   $('create-section').hidden = actor.role !== 'em';
+  $('hire-sidebar').hidden = personal;
+  $('workspace').classList.toggle('personal', personal);
+  $('planner-link').hidden = !personal;
+  $('intro-eyebrow').textContent = actor.role === 'em' ? 'ENGINEERING MANAGER' : actor.role === 'network' ? 'NETWORK OPERATIONS' : 'YOUR ONBOARDING';
+  $('intro-title').textContent = actor.role === 'em' ? 'Build a great first day.' : actor.role === 'network' ? 'Get your teammates connected.' : `Welcome, ${displayName(actor)}.`;
+  $('intro-description').textContent = actor.role === 'em' ? 'Welcome new teammates, plan their access, and follow their progress.' : actor.role === 'network' ? 'Prepare accounts and devices, assign access, and resolve onboarding blockers.' : 'Follow your progress and find everything you need to get started.';
+  document.title = `${roleLabel(actor)} · DT onboarding`;
   $('scope').textContent = actor.role === 'em' ? 'Your hires · Toronto and Berlin' : actor.role === 'network' ? `Network queue · ${actor.locations.join(', ')}` : 'Your onboarding progress';
   $('list-title').textContent = actor.role === 'network' ? 'Accounts awaiting your team.' : actor.role === 'hire' ? 'Your onboarding.' : 'Your incoming teammates.';
   const page = await api(`/api/hires?offset=${more ? nextOffset : 0}`);
@@ -56,36 +75,47 @@ async function loadDetail(hireId) {
   const d = await api(`/api/hires/${hireId}`);
   if (token !== version || selectedId !== hireId) return;
   const network = currentActor().role === 'network';
-  $('detail').innerHTML = `<p class="eyebrow">${esc(d.location)} · ${esc(d.profileId)}</p><h2>${esc(d.name)}</h2><p>Starts ${esc(d.startDate)}</p>
-    <span class="badge">SIMULATED ONBOARDING · TEMPORARY STUBS</span>
-    <h3>${d.blockers.length ? 'What needs attention' : 'Demo onboarding complete'}</h3>
+  $('detail').innerHTML = `<p class="eyebrow">${esc(d.location)} · Dealertrack developer</p><h2>${esc(d.name)}</h2><p>Starts ${esc(d.startDate)}</p>
+    <span class="badge">SIMULATED ACCESS</span>
+    <h3>${d.blockers.length ? 'What needs attention' : 'Onboarding plan complete'}</h3>
     ${d.blockers.length ? `<ul>${d.blockers.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : '<p>All simulated onboarding steps are complete. Actual access remains unverified.</p>'}
     <h3>Account & device</h3>
     ${network ? `<form id="account-form" data-hire-id="${esc(d.id)}"><div class="account-grid"><label>AD ID<input name="adId" required maxlength="300" value="${esc(d.account?.adId)}"></label><label>Work email<input name="workEmail" type="email" required maxlength="300" value="${esc(d.account?.workEmail)}"></label><label>Laptop ID<input name="laptopId" required maxlength="300" value="${esc(d.account?.laptopId)}"></label></div><div class="actions"><button>Save account details</button></div></form><div class="actions"><button data-provision="${esc(d.id)}" ${d.account ? '' : 'disabled'}>Queue mock provisioning</button></div>` : `<dl><dt>AD ID</dt><dd>${esc(d.account?.adId || 'Awaiting network team')}</dd><dt>Work email</dt><dd>${esc(d.account?.workEmail || 'Not recorded')}</dd><dt>Laptop ID</dt><dd>${esc(d.account?.laptopId || 'Not recorded')}</dd></dl>`}
     <h3>Requested groups</h3><ul>${d.requestedGroups.map(g => `<li>${esc(g)}</li>`).join('')}</ul>
     ${d.assignments.map(a => `<div class="resource"><strong>${esc(a.group)}</strong><p>Mock · ${esc(a.status)} · ${a.attempts} attempt(s)</p>${a.error ? `<p>${esc(a.error)}</p>` : ''}${network ? `<div class="actions">${a.status === 'pending' ? actionButton('assignments', a.id, 'success', 'Simulate success') + actionButton('assignments', a.id, 'failure', 'Simulate failure') : a.status === 'failed' ? actionButton('assignments', a.id, 'retry', 'Retry failed group') : ''}</div>` : ''}</div>`).join('')}
-    <h3>Mock requests</h3>${d.requests.map(r => `<div class="resource"><strong>${esc(r.kind)} request</strong><p>Mock · ${esc(r.status)}${r.ticket ? ` · ${esc(r.ticket.key)}` : ''}</p>${r.kind === 'admin' ? '<p>Dedicated-form route; separate from Slack.</p>' : ''}${network ? `<div class="actions">${r.status === 'pending' ? actionButton('requests', r.id, 'ticket', 'Create fictional ticket') : r.kind === 'admin' && r.status === 'ticket-created' ? actionButton('requests', r.id, 'grant', 'Simulate grant') + actionButton('requests', r.id, 'deny', 'Simulate denial') : r.kind === 'admin' && r.status === 'granted' ? actionButton('requests', r.id, 'verify', 'Simulate verification') : ''}</div>` : ''}</div>`).join('')}
+    <h3>Access requests</h3>${d.requests.map(r => `<div class="resource"><strong>${esc(r.kind)} request</strong><p>Mock · ${esc(r.status)}${r.ticket ? ` · ${esc(r.ticket.key)}` : ''}</p>${r.kind === 'admin' ? '<p>Dedicated-form route; separate from Slack.</p>' : ''}${network ? `<div class="actions">${r.status === 'pending' ? actionButton('requests', r.id, 'ticket', 'Create fictional ticket') : r.kind === 'admin' && r.status === 'ticket-created' ? actionButton('requests', r.id, 'grant', 'Simulate grant') + actionButton('requests', r.id, 'deny', 'Simulate denial') : r.kind === 'admin' && r.status === 'granted' ? actionButton('requests', r.id, 'verify', 'Simulate verification') : ''}</div>` : ''}</div>`).join('')}
     <h3>Recent activity</h3><ul>${d.events.map(e => `<li>${esc(e.type.replaceAll('-', ' '))} · ${esc(new Date(e.createdAt).toLocaleString())}</li>`).join('')}</ul>
-    <p class="fine">Real workstation readiness: ${esc(d.realReadiness)}. The separate local planner retains its own browser data.</p>`;
+    <p class="fine">Real workstation readiness: ${esc(d.realReadiness)}.</p>`;
 }
 async function run(action) {
   if (busy) return;
   busy = true;
-  $('actor').disabled = true;
   $('refresh').disabled = true;
   document.querySelectorAll('button').forEach(b => { if (!b.disabled) { b.dataset.pending = 'true'; b.disabled = true; } });
-  try { await action(); feedback('Shared demo data updated.'); }
+  try { await action(); feedback('Up to date.'); }
   catch (error) { feedback(error.message, true); }
   finally {
-    busy = false; $('actor').disabled = false; $('refresh').disabled = false;
+    busy = false; $('refresh').disabled = false;
     document.querySelectorAll('[data-pending]').forEach(b => { b.disabled = false; delete b.dataset.pending; });
+    renderProfile();
   }
 }
-$('actor').addEventListener('change', () => {
-  actorId = $('actor').value; selectedId = ''; version++;
+$('profile-accounts').addEventListener('click', event => {
+  const option = event.target.closest('[data-actor]');
+  if (!option || busy) return;
+  actorId = option.dataset.actor; selectedId = ''; version++;
+  try { sessionStorage.setItem('onboarding-demo-actor', actorId); } catch { /* In-memory selection remains available. */ }
+  $('profile-menu').open = false;
+  $('profile-toggle').focus();
+  $('create-form').reset();
+  renderProfile();
   hires = []; nextOffset = null; renderList();
-  $('detail').innerHTML = '<p>Loading this actor’s onboarding plans…</p>';
+  $('detail').innerHTML = '<p>Loading your workspace…</p>';
   run(() => refresh());
+});
+document.addEventListener('click', event => { if (!$('profile-menu').contains(event.target)) $('profile-menu').open = false; });
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && $('profile-menu').open) { $('profile-menu').open = false; $('profile-toggle').focus(); }
 });
 $('refresh').addEventListener('click', () => run(async () => { await loadActors(); await refresh(); }));
 $('more').addEventListener('click', () => run(() => refresh({ more: true })));

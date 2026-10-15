@@ -95,6 +95,8 @@ Responses: `{ data: ... }`; errors: `{ error: { code, message } }`. Use 400 for 
 
 Creating a hire only needs pre-account details; work email is not required yet. Existing entitlement drafting may still require work email. Block those requests with an explanatory blocker until the account is recorded. Never silently invent an email or group.
 
+Name-field update requested by Vibgy: the EM form requires separate `firstName` and `lastName`. New structured API payloads must provide both, with up to 300 characters each; whitespace is trimmed and `name` is derived for display. Legacy name-only callers and saved records remain supported without guessing name parts. Structured fields are also included in the account-request payload.
+
 ### Workflow boundaries
 
 - Hire creation stores a pending account request. An explicit mock ticket action gives it a `DEMO-` reference; no live URL.
@@ -188,7 +190,8 @@ Create payload example (all values fictional):
 
 ```json
 {
-  "name": "Taylor Example",
+  "firstName": "Taylor",
+  "lastName": "Example",
   "email": "",
   "startDate": "2026-11-03",
   "location": "Toronto",
@@ -241,3 +244,7 @@ Executed checks: `node --test --test-isolation=none tests/*.test.mjs` initially 
 Deviation from initial plan: user-approved temporary account/group/admin workflow stubs are included. Rafay's full durable entitlement workflow and Sameer's MCP implementation remain their tracks.
 
 Browser reload after stopping/restarting the local server retained Casey, Alex's recorded account, successful group and admin ticket. Preview saved locally to Git-ignored `reports/platform-preview.png`. The portal uses explicit Refresh for cross-session changes; live push/polling is not implemented.
+
+Profile presentation update: a circular initials control at the top right opens the fictional account switcher, closes on outside click/Escape and remembers selection per browser tab. Main pages use role-specific headings and controls; the hire page has no team picker and the local planner link appears for hires. The footer and simulated resource labels retain demo context without the previous implementation-oriented banner.
+
+Verification for this update: all 23 tests passed with `node --test --test-isolation=none tests/*.test.mjs`. The added test checks structured compound names, required first/last fields, request payload fields and legacy compatibility. Browser created Samira de Silva from separate fields, switched through the profile menu to Berlin's network queue (no EM form), then to Samira's personal page (no team picker or account editor), and retained that profile after reload. Local preview: ignored `reports/profile-switcher.png`.

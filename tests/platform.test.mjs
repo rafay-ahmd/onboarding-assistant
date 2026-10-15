@@ -16,6 +16,23 @@ function fixture(t, options) {
 }
 const rejects = (fn, status, code) => assert.throws(fn, e => e.status === status && (!code || e.code === code));
 
+test('structured names preserve compound names and validate both fields without splitting legacy records', t => {
+  const { app } = fixture(t);
+  const { name, ...fields } = input;
+  const hire = app.create('em-vibgy', 'structured', { ...fields, firstName: '  Ana María ', lastName: ' de la Cruz  ' });
+  assert.equal(hire.firstName, 'Ana María');
+  assert.equal(hire.lastName, 'de la Cruz');
+  assert.equal(hire.name, 'Ana María de la Cruz');
+  assert.equal(hire.requests[0].payload.lastName, 'de la Cruz');
+  assert.equal(app.get(`hire-${hire.id}`, hire.id).firstName, 'Ana María');
+  for (const [index, invalid] of [{ firstName: 'Ana' }, { lastName: 'Cruz' }, { firstName: ' ', lastName: 'Cruz' }, { firstName: 'Ana', lastName: ' ' }].entries()) {
+    rejects(() => app.create('em-vibgy', `invalid-name-${index}`, { ...fields, ...invalid }), 400, 'INVALID_INPUT');
+  }
+  const legacy = app.create('em-vibgy', 'legacy', input);
+  assert.equal(legacy.name, name);
+  assert.equal(legacy.firstName, undefined);
+});
+
 test('create is atomic/idempotent, independent of payload key order, with conflict detection', t => {
   const { store, app } = fixture(t);
   const hire = app.create('em-vibgy', 'create-1', input);
