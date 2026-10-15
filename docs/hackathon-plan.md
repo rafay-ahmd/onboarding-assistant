@@ -1,6 +1,6 @@
 # Three-person hackathon delivery plan
 
-Updated: October 15, 2026. Status: Track A delivered on `main` through `7ba2f9a`; Track B portal integration and Track C MCP remain pending.
+Updated: October 15, 2026. Status: Track A delivered on `main` through `7ba2f9a`; the initial six-tool Track C MCP adapter is implemented on `feat/mcp-onboarding-tools`. Track B portal entitlement integration remains pending.
 
 Use the [implemented platform contract](#implemented-platform-contract-track-a) and [profile/location contract](#implemented-profile-catalogue-contract) as the current API authority. The original shared proposal below describes the intended full workflow; its entitlement actions are not all implemented. In particular, portal entitlement creation returns `501 WORKFLOW_PENDING`.
 
@@ -8,7 +8,7 @@ Immediate handoff:
 
 - **Vibgy:** platform delivered, including EM-managed profiles, network location defaults, persistence, role-specific screens and action gating. Coordinate any new persistence or API requirements from B/C.
 - **Rafay:** replace/extend `backend/services/demo-workflows.mjs` through the documented injection seam; integrate durable entitlement requests into the portal using immutable hire IDs. The separate `/planner` live Slack flow already exists, but is not connected to fictional portal hires.
-- **Sameer:** build the HTTP-backed MCP adapter and demo instructions. Discover profile IDs with `GET /api/profiles`; use `firstName`/`lastName` when creating hires. Omit `requestedGroups` to use profile defaults; the backend always adds the network team's location defaults. Add profile/location management tools if those settings must also be configurable through Codex.
+- **Sameer:** connect the presenter MCP host and rehearse [the demo](demo.md) using [the setup guide](mcp.md). The six-tool HTTP adapter and automated protocol/API/browser parity checks are implemented. Discover managed profile IDs through `list_profiles`; profile/location settings and provider outcomes remain dashboard operations in this increment.
 
 ## Goal and demo
 
@@ -35,7 +35,7 @@ Portal tickets, assignments and service responses in this demo are simulated. Vi
 - `/planner` is a separate single-operator live Slack access flow with reviewed drafts, send/sync/reply and explicit actual-access verification. Historical browser-local mock queue modules remain development fixtures.
 - Read-only workstation inventory script and JSON report import; no automatic setup execution.
 - CMS adds a static draft profile and local simulation at `/planner?profile=cms-developer`, separate from the EM-managed SQLite profile catalogue. Dealertrack retains its connected-account Slack planner.
-- No MCP implementation or setup guide is present on `main` yet.
+- `mcp/` implements six stdio tools using the existing HTTP API, configured demo actors and explicit mutation idempotency keys. Setup/demo guides and SDK smoke tests are present; actual presenter-host registration and rehearsal remain pending.
 
 Reuse these modules rather than rebuilding them. Read [the queue contract](request-queue-contract.md) before changing queue persistence or state transitions.
 
@@ -47,7 +47,7 @@ Reuse these modules rather than rebuilding them. Read [the queue contract](reque
 | B: workflow and mocks | Rafay | Account ticket lifecycle, mock AD assignment, conditional admin requests, existing queue backend integration, failure/retry behavior | `backend/workflows/`, `backend/providers/`, `web/request-queue*.mjs`, `web/mock-slack-adapter.mjs`, related tests |
 | C: MCP and demo | Sameer | MCP tool schemas/adapter, configuration instructions, smoke tests and demo script | `mcp/`, `tests/mcp*.test.mjs`, `docs/mcp.md`, `docs/demo.md` |
 
-Track A's `backend/` modules and portal files now exist; B/C directories in the table are proposed. The current workflow seam is `backend/services/demo-workflows.mjs`; the live Slack implementation is under `server/` and `web/live-requests.mjs`. Track A owns shared server wiring and DB schema. Track B supplies workflow functions and repository requirements; A coordinates API/schema changes. Track C consumes HTTP and does not write directly to SQLite. Use separate branches and small integration PRs.
+Track A's `backend/` modules, portal files and Track C files now exist; B directories in the table are proposed. The current workflow seam is `backend/services/demo-workflows.mjs`; the live Slack implementation is under `server/` and `web/live-requests.mjs`. Track A owns shared server wiring and DB schema. Track B supplies workflow functions and repository requirements; A coordinates API/schema changes. Track C consumes HTTP and does not write directly to SQLite. Use separate branches and small integration PRs.
 
 ## POC scope
 
@@ -112,7 +112,7 @@ The separate `/planner` browser now reads the static `profiles/catalog.json` and
 
 Before adding CMS to the implemented backend/MCP clients, agree how the existing `githubUsername`, `githubRepository`, optional `githubTeam`/`githubMirrorUser`, `subteam` and `awsGroup` drafting fields map to the proposed `requestedGroups`. A `CMS-GH-` prefix is not an assignable group. Preserve profile-scoped entitlement IDs, per-item routing and distinct organization membership/SSO/repository access outcomes. Profile candidates must not automatically provision every listed tool. The user confirmed mandatory local admin for CMS; other profiles retain their own admin policy. CMS repository requests can identify the repository and optionally a team/AD group or example user without knowing its group; automatic group assignment still requires an approved exact group. GitHub requests support Access Request tickets or #helpdesk, with an up-to-six-hour end-to-end sync window. GitHub account/2FA, SSO, CLI setup and checkout are separate manually recorded milestones. The draft programme tool list is not a confirmed CMS entitlement policy.
 
-The implemented Track A contract below now settles account-request completion and group retry actions: recording account details completes the account request, and failed assignments use the retry action. Remaining CMS integration decisions are approved groups/applicability and explicit mapping of the CMS template into a managed SQLite profile. MCP should discover the authoritative managed profile IDs through GET /api/profiles as documented below, not reuse the static planner catalogue as backend IDs. The initial five MCP tools do not expose every mock transition needed by the target demo. Either document those actions as dashboard steps or agree narrow mock-action tools with the same backend authorization. No backend/API/MCP functionality is added by the CMS increment.
+The implemented Track A contract below settles account-request completion and group retry actions: recording account details completes the account request, and failed assignments use the retry action. Remaining CMS integration decisions are approved groups/applicability and explicit mapping of the CMS template into a managed SQLite profile. MCP discovers authoritative managed profile IDs through `list_profiles`, not the static planner catalogue. The six-tool MCP increment documents provider transitions and profile/location settings as dashboard steps. The earlier CMS increment itself added no backend/API/MCP functionality.
 
 ### Workflow boundaries
 
@@ -151,13 +151,14 @@ Temporary platform stubs already cover account tickets, provisioning prerequisit
 
 ### C — MCP and demo
 
-- [ ] Implement a local stdio MCP adapter using the supported MCP SDK; document install/start/configuration and the configured demo actor.
-- [ ] Expose `list_hires`, `create_hire`, `get_onboarding_status`, `record_account_details`, and `provision_access` against the agreed HTTP API.
-- [ ] Expose profile discovery for hire creation; include profile create/update and location-default read/update tools if demo configuration is in scope. Preserve EM versus assigned-network permissions and revision checks.
-- [ ] Mutating tools accept an explicit idempotency key; preserve it across retries. Return useful validation/blocker errors and clear simulation labels.
-- [ ] Keep stdout reserved for MCP messages; diagnostics go to stderr. Report backend unavailability clearly.
-- [ ] Start against fixture API responses while A builds persistence. Then test the real local API, actor restrictions and duplicate mutations.
-- [ ] Write a short demo script with expected results, fictional data and reset instructions.
+- [x] Implement a local stdio MCP adapter using the supported MCP SDK; document install/start/configuration and the configured demo actor.
+- [x] Expose `list_hires`, `create_hire`, `get_onboarding_status`, `record_account_details`, and `provision_access` against the agreed HTTP API.
+- [x] Expose profile discovery through `list_profiles`; retain profile/location management in the dashboard for this scope, with existing role/revision checks.
+- [x] Mutating tools accept an explicit idempotency key; preserve it across retries. Return useful validation/blocker errors and clear simulation labels.
+- [x] Keep stdout reserved for MCP messages; diagnostics go to stderr. Report backend unavailability clearly.
+- [x] Test fixture API responses and the real local API, actor restrictions, duplicate mutations and lost-response replay.
+- [x] Write a short demo script with expected results, fictional data and reset instructions.
+- [ ] Register the adapter in the presenter's MCP host and rehearse the documented journey. SDK stdio and browser checks do not establish that this host is configured.
 
 ## Integration milestones
 
@@ -176,14 +177,16 @@ Integrate at each gate rather than waiting for three completed branches. Cut Sla
 - [x] New backend tests cover unauthorized cross-hire/cross-location access and invalid transitions.
 - [x] Implemented create/provision/stub-action commands are idempotent; account email edits retain hire identity. Entitlement-command acceptance remains Track B work.
 - [x] Restart retains hires, account details, requests, assignments, event history, profiles and location defaults.
-- [ ] Dashboard and MCP show identical derived blockers for the same actor/hire.
+- [x] Dashboard and MCP show identical derived blockers for the same actor/hire.
 - [x] Browser checks cover each role, two hires, location filtering, admin branching and a failed group retry; profile and location-default editors are checked too.
 - [x] Portal seed/demo artifacts are fictional; local DB files and generated reports remain ignored.
 - [x] README and AGENTS.md document current runtime, start/test/seed/reset, API boundaries and profile/location behavior.
 - [ ] Track B durable entitlement integration passes its transition, identity and restart checks.
-- [ ] Sameer documents MCP setup and verifies dashboard/MCP parity end to end.
+- [x] Sameer documents MCP setup and verifies dashboard/MCP parity end to end using real stdio and a temporary local backend/browser.
 
-Tests: `npm test` or `node --test tests/*.test.mjs`. If the local sandbox blocks test child processes, use `node --test --test-isolation=none tests/*.test.mjs`. Latest implementation verification passed all 44 tests; MCP parity remains unverified.
+Tests: run `npm ci`, then `npm test` or `node --test tests/*.test.mjs`. If the local sandbox blocks test child processes, use `node --test --test-isolation=none tests/*.test.mjs`; stdio tests still need subprocess access. Latest verification passed all 66 tests, including 13 MCP checks/subtests. A headless browser against an in-memory backend confirmed MCP-created hire visibility, account/provision refresh, dashboard failure/retry visibility through MCP and displayed blocker parity. No real Slack calls or running-demo database changes were made.
+
+After rebasing Track C onto main `91605af`, all 73 tests pass. MCP duplicate/restart checks now compare against the initial hire count so additional seed identities do not invalidate them. The earlier 66-test and browser checks above describe the pre-rebase checkpoint.
 
 Each PR should state its track, contract changes, tests run and any remaining mock behavior. This plan authorizes no live service submissions and does not claim the pending features already exist.
 
@@ -191,7 +194,7 @@ Each PR should state its track, contract changes, tests run and any remaining mo
 
 Approved clarifications from Vibgy: use fictional Toronto/Berlin locations; include clearly labelled temporary workflow stubs so the dashboard can be demonstrated before Rafay's integration.
 
-Runtime: Node 24+, built-in `node:sqlite`, no package dependencies. `npm start` runs the loopback server. SQLite schema v3 migrates on startup; `npm run seed` is non-destructive and idempotent. Stop the server before `npm run reset:demo`, which clears only this application's local demo tables (including profiles and location defaults) and reseeds. DB files/sidecars under `data/` are ignored.
+Runtime: Node 24+, built-in `node:sqlite`. The dashboard has no package dependencies; MCP and the complete test suite require `npm ci` for the pinned SDK/Zod dependencies. `npm start` runs the loopback server. SQLite schema v3 migrates on startup; `npm run seed` is non-destructive and idempotent. Stop the server before `npm run reset:demo`, which clears only this application's local demo tables (including profiles and location defaults) and reseeds. DB files/sidecars under `data/` are ignored.
 
 ### Sameer: HTTP integration
 
@@ -267,9 +270,9 @@ Implementation branch: `feat/platform-dashboards`.
 | Atomic workflow integration | Injected failing workflow inserts a partial assignment then throws; test proves rollback and successful reuse of the same command key |
 | Existing planner isolation | Original model/queue tests retained; HTTP test verifies `/planner`; shared simulated results have no actual-access fields |
 
-Executed checks: `node --test --test-isolation=none tests/*.test.mjs` initially passed 20 tests. Final `node --test tests/*.test.mjs` passed all 22 tests with child-process access enabled; the default sandbox had blocked process spawning. Reset/reseed and successful-group isolation tests are included. SonarQube tooling is not available in this session. MCP client parity is pending Sameer's implementation; backend contract is exercised through HTTP tests.
+Original Track A checks: `node --test --test-isolation=none tests/*.test.mjs` initially passed 20 tests. Final `node --test tests/*.test.mjs` passed all 22 tests with child-process access enabled; the default sandbox had blocked process spawning. Reset/reseed and successful-group isolation tests are included. SonarQube tooling was not available in that session. MCP parity was pending at this checkpoint; the current Track C evidence is recorded under Acceptance and handoff above.
 
-Deviation from initial plan: user-approved temporary account/group/admin workflow stubs are included. Rafay's full durable entitlement workflow and Sameer's MCP implementation remain their tracks.
+Deviation from initial plan: user-approved temporary account/group/admin workflow stubs are included. Rafay owns the remaining full durable entitlement workflow; Sameer's initial HTTP-backed MCP adapter now consumes these stubs through the existing API.
 
 Browser reload after stopping/restarting the local server retained Casey, Alex's recorded account, successful group and admin ticket. Preview saved locally to Git-ignored `reports/platform-preview.png`. The portal uses explicit Refresh for cross-session changes; live push/polling is not implemented.
 

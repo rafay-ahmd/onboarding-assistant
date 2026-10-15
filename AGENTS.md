@@ -31,6 +31,10 @@ Portal submit buttons require changed, valid form values and remain disabled dur
 - Browser-local persistence for one hire per profile: details, access statuses and setup completion. Clear the selected plan before switching hires. Dealertrack's existing storage key is preserved; CMS uses a separate key. Imported reports remain in memory and are discarded on profile navigation.
 - Dependency reconciliation invalidates downstream completion when prerequisites are no longer verified.
 
+### MCP increment
+
+`mcp/index.mjs` serves a local stdio adapter using the MCP SDK. Six tools (`list_profiles`, `list_hires`, `create_hire`, `get_onboarding_status`, `record_account_details`, `provision_access`) call the existing HTTP API with one configured demo actor per process. Mutations require explicit idempotency keys; uncertain outcomes must reuse the same key and payload. No direct SQLite access, live Slack submission or provider simulation actions are exposed. Profile/location configuration and simulated success/failure/retry remain dashboard operations. See `docs/mcp.md` and `docs/demo.md`; a real presenter-host connection/rehearsal remains to be performed.
+
 ## Not implemented yet
 
 - Production authentication/SSO. Seeded demo actors and backend role/location checks exist; the actor header deliberately allows local demo impersonation.
@@ -38,7 +42,7 @@ Portal submit buttons require changed, valid form values and remain disabled dur
 - Background synchronization, direct helpdesk status APIs, reminders or escalation. Slack submission and explicit thread synchronization are implemented in the planner below.
 - Running workstation checks from the dashboard (currently run the script separately and import its JSON).
 - Automatic installations, builds, remote machine management or setup execution/resume.
-- An MCP server or direct Codex integration.
+- Production MCP authentication, automatic MCP host registration, and MCP tools for profile/location management or provider simulation actions.
 
 ## Agreed work split
 
@@ -51,7 +55,7 @@ Explore and implement:
 - Profile-based dashboards appropriate to each role.
 - Coordinate shared backend services with Sameer's MCP adapter so both clients apply the same rules.
 
-The platform portion is implemented as described above. Production identity and MCP transport/tools remain separate work; see the delivery plan for precise implemented and pending boundaries.
+The platform and initial MCP adapter are implemented as described above. Production identity remains separate work; see the delivery plan for precise implemented and pending boundaries.
 Real role separation needs backend-enforced authorization and durable per-user data; hiding controls in the UI or using a localStorage role switch is only a demo.
 
 ### Rafay's stream: Slack and helpdesk integration
@@ -86,6 +90,9 @@ EM-managed profiles: SQLite `profiles` stores name, one groups list (1–60), ad
 - backend/db/: SQLite migration/repository and fictional demo seed/reset.
 - backend/services/: actor-scoped platform commands and replaceable temporary workflow stubs.
 - backend/api/router.mjs: JSON API envelopes, local-origin checks and payload limits.
+- mcp/: stdio entrypoint, strict tool schemas, fixed demo-actor configuration and HTTP client.
+- tests/mcp*.test.mjs: schema/transport errors, role restrictions, idempotency, restart persistence and real stdio smoke tests.
+- docs/mcp.md, docs/demo.md: host configuration and fictional end-to-end demonstration.
 - web/portal.html, web/portal.css, web/portal.mjs: shared EM/network/hire portal at `/`.
 - web/index.html, web/style.css: dashboard structure and styling.
 - web/app.mjs: browser interactions, persistence and report display.
@@ -99,7 +106,7 @@ EM-managed profiles: SQLite `profiles` stores name, one groups list (1–60), ad
 
 ## Run and verify
 
-No npm dependency installation is currently required.
+The dashboard has no package dependencies. Run `npm ci` before MCP or the full test suite; the pinned MCP SDK, Zod and test client are recorded in package-lock.json. Node 24+ is required.
 
     node server.mjs
 
