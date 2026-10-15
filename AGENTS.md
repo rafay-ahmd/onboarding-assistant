@@ -2,7 +2,7 @@
 
 ## Purpose and product direction
 
-Hackathon 26: Automate Onboarding for NewHires (submitted by Diana Tang; two-person team).
+Hackathon 26: Automate Onboarding for NewHires (submitted by Diana Tang; now a three-person delivery team).
 Start with Dealertrack developers, then support other teams and locations through profiles.
 Reduce time to a usable development environment by requesting access early, identifying blockers, and automating approved setup and verification steps.
 The intended product goes beyond a tracker. The current implementation is the initial local prototype; do not describe planned integrations as working features.
@@ -34,12 +34,14 @@ Read README.md, package.json, and relevant implementation files before changing 
 
 ## Agreed work split
 
-### Partner's stream: identity, dashboards and MCP
+The current three-person ownership and pending implementation contracts are in [docs/hackathon-plan.md](docs/hackathon-plan.md). Use that plan for new work: Vibgy owns platform/dashboards, Rafay owns workflows/mocked integrations, and Sameer owns MCP/demo. The plan does not change the implemented baseline below.
+
+### Platform stream: identity and dashboards
 
 Explore and implement:
 - Multiple logins / roles: individual new hire, engineering manager (EM), and network team assigned by location.
 - Profile-based dashboards appropriate to each role.
-- An MCP server through which Codex can interact with explicitly exposed application capabilities.
+- Coordinate shared backend services with Sameer's MCP adapter so both clients apply the same rules.
 
 These are planned capabilities, not existing behavior. Exact permissions, identity provider, persistence, location routing and MCP transport/tools remain design decisions to agree on.
 Real role separation needs backend-enforced authorization and durable per-user data; hiding controls in the UI or using a localStorage role switch is only a demo.
