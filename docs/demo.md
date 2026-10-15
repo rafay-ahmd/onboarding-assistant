@@ -10,6 +10,45 @@ Use Sameer Mehta as the new hire, Pugazh as the engineering manager and Toronto�
 4. Follow [MCP setup](mcp.md). For this rehearsal, `onboarding-em` is Pugazh, `onboarding-network` is Toronto’s network role and `onboarding-me` is Sameer’s self-only role. Each connection keeps its actor fixed.
 5. Through `list_profiles`, confirm `cms-developer`, group `TR-AP-GitHub-CMS` and admin required. Leave AWS/VPN/repository groups unset until the team confirms them. Demo location, start date, email and machine IDs are fictional.
 
+## Run on Rafay's laptop
+
+The implementation is portable; this laptop's database and Codex registrations are not part of Git. Use Node 24+ and Codex CLI signed in on Rafay's machine. Run the API server, Node MCP processes and Codex in the same environment: all in WSL, or all native Windows. A Linux executable path from another laptop will not work in a Windows registration.
+
+The personalized demo needs **both** this MCP branch and [CMS demo-account PR #6](https://github.com/rafay-ahmd/onboarding-assistant/pull/6) in the checkout. After both PRs merge, update main normally. Before merging, a separate local integration branch can combine them for rehearsal. They were combined in a temporary checkout without conflicts, and all 80 tests passed; this does not establish that Rafay's particular Windows/WSL installation has been tested.
+
+From that combined checkout, run `npm ci`, `npm test`, then `npm start`. Startup creates a local SQLite database and seeds Pugazh, Sameer and the CMS profile. A fresh database starts Sameer's plan pending, so it can demonstrate the complete progression. Do not copy this laptop's completed database, Codex config or generated hire ID. Existing saved data is preserved by startup; there is no need to reset Rafay's database.
+
+Keep `npm start` running in one terminal. In another terminal at the repository root, register the three demo roles. These commands discover Sameer's newly generated actor ID instead of copying an ID from the rehearsed laptop.
+
+PowerShell (native Windows):
+
+```powershell
+$onboardingRepo = (Get-Location).Path
+$onboardingNode = (Get-Command node -CommandType Application).Source
+$onboardingScript = Join-Path $onboardingRepo 'mcp/index.mjs'
+$onboardingActors = (Invoke-RestMethod 'http://127.0.0.1:4173/api/demo/actors').data
+$onboardingSelf = @($onboardingActors | Where-Object { $_.role -eq 'hire' -and $_.name -eq 'Sameer Mehta (demo hire)' })
+if ($onboardingSelf.Count -ne 1) { throw 'Expected one seeded Sameer demo hire. Confirm both PRs are in this checkout.' }
+codex mcp add onboarding-em --env ONBOARDING_DEMO_ACTOR_ID=em-pugazh --env ONBOARDING_API_URL=http://127.0.0.1:4173 -- $onboardingNode $onboardingScript
+codex mcp add onboarding-network --env ONBOARDING_DEMO_ACTOR_ID=network-toronto --env ONBOARDING_API_URL=http://127.0.0.1:4173 -- $onboardingNode $onboardingScript
+codex mcp add onboarding-me --env "ONBOARDING_DEMO_ACTOR_ID=$($onboardingSelf[0].id)" --env ONBOARDING_API_URL=http://127.0.0.1:4173 -- $onboardingNode $onboardingScript
+codex mcp list
+```
+
+Bash (WSL/Linux):
+
+```bash
+onboardingRepo="$PWD"
+onboardingNode="$(command -v node)"
+onboardingSelf="$(node --input-type=module -e 'const {data}=await (await fetch("http://127.0.0.1:4173/api/demo/actors")).json(); const actors=data.filter(a=>a.role==="hire"&&a.name==="Sameer Mehta (demo hire)"); if(actors.length!==1)throw Error("Expected one seeded Sameer demo hire; confirm both PRs are present."); console.log(actors[0].id);')" &&
+codex mcp add onboarding-em --env ONBOARDING_DEMO_ACTOR_ID=em-pugazh --env ONBOARDING_API_URL=http://127.0.0.1:4173 -- "$onboardingNode" "$onboardingRepo/mcp/index.mjs" &&
+codex mcp add onboarding-network --env ONBOARDING_DEMO_ACTOR_ID=network-toronto --env ONBOARDING_API_URL=http://127.0.0.1:4173 -- "$onboardingNode" "$onboardingRepo/mcp/index.mjs" &&
+codex mcp add onboarding-me --env "ONBOARDING_DEMO_ACTOR_ID=$onboardingSelf" --env ONBOARDING_API_URL=http://127.0.0.1:4173 -- "$onboardingNode" "$onboardingRepo/mcp/index.mjs" &&
+codex mcp list
+```
+
+These names are dedicated demo registrations; use different names if Rafay already uses them for another setup. Open a fresh Codex session, check `/mcp`, then ask: “Use onboarding-me/get_my_onboarding and get_profile_requirements to explain my CMS onboarding.” Confirm Sameer, Pugazh, CMS, the GitHub group and required admin before the presentation. The following steps rehearse the full journey. No Slack token is needed for this CMS demo; leave the separate live Slack planner out of it.
+
 ## 1. New hire sees the plan
 
 Ask Codex:

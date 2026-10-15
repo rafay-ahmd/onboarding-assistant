@@ -98,6 +98,8 @@ Where process isolation is unavailable, use `node --test --test-isolation=none t
 
 For a repeatable presentation walkthrough, see [the demo script](demo.md).
 
+To present from a different laptop, follow [the fresh-laptop setup](demo.md#run-on-rafays-laptop). Reinstall dependencies and register each stdio server using that machine's Node/script paths and discovered demo actor IDs. The personalized CMS fixtures also need PR #6; the database and local Codex configuration do not travel with the source code.
+
 ## New-hire reads
 
 `get_my_onboarding` needs no arguments. The backend resolves the configured hire actor's immutable self mapping and returns the same detail as `get_onboarding_status`. Manager/network actors receive `403 FORBIDDEN`; they must select a visible hire explicitly.
