@@ -201,4 +201,10 @@ test('HTTP contract supports two clients, envelopes, idempotency and local-origi
   assert.equal((await fetch(`${base}/api/hires`, { method: 'POST', headers, body: JSON.stringify({ text: 'x'.repeat(33000) }) })).status, 413);
   const portal = await fetch(base); assert.match(await portal.text(), /portal.mjs/);
   assert.match(await (await fetch(`${base}/planner`)).text(), /app.mjs/);
+  assert.match(await (await fetch(`${base}/live-requests.mjs`)).text(), /mountLiveRequests/);
+  // The Slack namespace keeps its own origin/CSRF checks instead of being
+  // swallowed by the portal router's actor requirement. No Slack calls occur.
+  const slack = await fetch(`${base}/api/slack/requests`, { method: 'POST', headers: { Origin: 'https://external.invalid' } });
+  assert.equal(slack.status, 403);
+  assert.equal((await slack.json()).error, 'local_origin_required');
 });

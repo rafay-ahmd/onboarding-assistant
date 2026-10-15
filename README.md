@@ -91,3 +91,37 @@ See [request queue integration contract](docs/request-queue-contract.md) for the
 Access-card badges automatically reflect the current employee’s mock queue state, including after reload. They are labelled Mock; the dropdown explicitly records actual access manually. The summary separates actual and mock verification counts. Resetting the mock queue restores the badges to actual tracked statuses. Simulated progress does not unblock real setup dependencies.
 
 For a queued mock request, its access card shows one automatic request-status field that follows every queue transition. The separate real-access manual record is collapsed by default. Existing records are preserved. Refresh the page to load updated UI code.
+
+
+## Direct Slack integration (local demo)
+
+Slack requests are integrated into the helpdesk access cards. Its requester is the authenticated Slack user, never the fictional hire form. The backend uses a user OAuth token to send as that user and read their request threads. Tokens stay in the server process and are never returned to the browser.
+
+Start with approved credentials in your environment:
+
+    SLACK_USER_TOKEN       required user OAuth token
+    SLACK_TEAM_ID          defaults to AutoScout24 workspace
+    SLACK_USER_ID          optional expected user identity
+    SLACK_CHANNEL_ID       defaults to the confirmed helpdesk channel
+    SLACK_ACTOR_EMAIL      optional configured email for matching real verification to the current form
+    ONBOARDING_DATA_DIR    optional local data directory
+
+Use scripts/Start-WithSlack.ps1 to enter a token through a hidden prompt and launch Node. Supply -NodePath if Node is not on PATH. The token is removed from the wrapper environment when Node exits; nothing is saved by the wrapper. Avoid pasting credentials in chat or shell command arguments.
+
+Prepare an individual request, review the immutable message and target channel, then explicitly confirm before sending. This creates REAL Slack messages. Admin rights still use their dedicated form. Requests, receipts and thread replies persist locally outside the repository by default in ~/.onboarding-assistant/slack-requests.json; never commit that data. This is a single-operator localhost demo, not the partner's multi-user auth service.
+
+Use Sync Slack replies to read the exact recorded thread. Bot-generated ticket references are detected, including rich Slack blocks. Follow-up questions are displayed and replies require review. Approval text is not treated as verified access: use Confirm my access works after checking it yourself. Where the configured actor email matches the form, this explicit real verification updates the manual access tracker.
+
+A successful Slack send is not proof Remy accepted the request. Missing scopes and channel membership errors are shown. Network-uncertain delivery has no resend action. The server checkpoints before sending to avoid blind retries after a crash. No real helpdesk requests are sent by automated tests.
+
+
+## Integrated access flow (October 15, 2026)
+
+The product UI now uses real Slack requests directly on access cards: Review request → save draft → review and send → sync replies / reply → confirm access works. The standalone Live Slack requests panel and all simulation controls are removed from the interface. Existing simulated browser data is ignored; it is never migrated into real requests. Historical mock modules and tests remain development fixtures only. The connection bar identifies the authenticated requester independently of the onboarding form. No automatic grant or verification is inferred from Slack text. Admin rights retain the dedicated form. Reports come from the actual workstation checker; sample report buttons and fictional hire filling are removed.
+
+
+## Request review and readiness update
+
+The access tab shows a progress bar based on verified permissions, not messages sent or approvals. Linked Slack status takes precedence over a manual record. Full-message editing, save-draft and explicit send use a styled dialog; replies and actual verification also use dialogs. The server accepts draft edits only before delivery and sends the exact final reviewed text. No external request is created by preparing or saving a draft. See docs/page-flows.md for all page workflows.
+
+The merged app serves the SQLite portal at `/` and the Slack-enabled planner at `/planner`. Their actors and stores remain separate. Portal actions require saved account details, pending assignments or the appropriate request state; AD ID is read-only after provisioning starts. Slack actions require a connection, valid message/details and an eligible request state; Save changes requires edits, and uncertain replies cannot be resent. Automated checks do not send Slack messages.

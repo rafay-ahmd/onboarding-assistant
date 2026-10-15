@@ -1,3 +1,4 @@
+import {createLiveApi} from './server/live-api.mjs';
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from 'node:url';
@@ -9,6 +10,7 @@ import { apiRouter } from './backend/api/router.mjs';
 const root = new URL("./", import.meta.url);
 
 const routes = {
+  "/live-requests.mjs": "web/live-requests.mjs",
   "/request-queue.mjs": "web/request-queue.mjs",
   "/request-queue-ui.mjs": "web/request-queue-ui.mjs",
   "/mock-slack-adapter.mjs": "web/mock-slack-adapter.mjs",
@@ -37,13 +39,17 @@ export function createApp({ databasePath = fileURLToPath(new URL('./data/onboard
   if (seed) seedDemo(store);
   const platform = createPlatform(store, workflows ? { workflows } : {});
   const api = apiRouter(platform);
+  const liveApi = createLiveApi(root);
   const server = http.createServer(async (req, res) => {
+    const requestUrl = new URL(req.url, "http://127.0.0.1");
+    if (requestUrl.pathname.startsWith("/api/slack/") && await (await liveApi)(req, res, requestUrl)) return;
     if (await api(req, res)) return;
     if (req.method !== "GET") {
       res.writeHead(405);
       res.end();
       return;
     }
+
 
     const route = routes[new URL(req.url, "http://127.0.0.1").pathname];
 

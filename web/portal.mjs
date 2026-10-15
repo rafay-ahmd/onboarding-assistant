@@ -19,12 +19,27 @@ $('create-form').querySelector('button[type="submit"]').insertAdjacentHTML('afte
 let actors = [], actorId = '', selectedId = '', hires = [], nextOffset = null, version = 0;
 let busy = false;
 const formBaselines = new WeakMap();
-const formValues = form => JSON.stringify([...new FormData(form)]);
+const formValues = form => JSON.stringify([...new FormData(form)].map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value]));
 function canSubmit(form) {
-  return !busy && formValues(form) !== formBaselines.get(form) && form.checkValidity();
+  const values = [...new FormData(form)];
+  for (const field of form.querySelectorAll('input[type="email"]')) {
+    field.setCustomValidity(field.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value.trim()) ? 'Enter a valid email address.' : '');
+  }
+  const groups = form.elements.requestedGroups;
+  if (groups) {
+    const names = groups.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    groups.setCustomValidity(!names.length || names.length > 30 || names.some(name => name.length > 300) ? 'Enter 1–30 groups, up to 300 characters each.' : '');
+  }
+  return !busy && values.every(([key, value]) => !form.elements[key].required || String(value).trim())
+    && formValues(form) !== formBaselines.get(form) && form.checkValidity();
 }
 function syncForm(form) {
   form.querySelector('button[type="submit"], button:not([type])').disabled = !canSubmit(form);
+  if (form.id === 'account-form') {
+    const provision = $('detail').querySelector('[data-provision]');
+    provision.disabled = busy || provision.dataset.available !== 'true' || formValues(form) !== formBaselines.get(form);
+    provision.title = formValues(form) !== formBaselines.get(form) ? 'Save account changes before provisioning.' : '';
+  }
 }
 function trackForm(form) {
   formBaselines.set(form, formValues(form));
@@ -117,7 +132,7 @@ async function loadDetail(hireId) {
       ${d.blockers.length ? `<ul>${d.blockers.map(b => `<li>${esc(d.assignments.some(a => a.status === 'pending' && b === `${a.group}: pending`) ? b.replace(/: pending$/, ': awaiting assignment') : b.replace(/Simulated /g, ""))}</li>`).join('')}</ul>` : '<p>Your onboarding plan is complete.</p>'}</div>
     </section>
     <h3 class="icon-heading">${icon('device')}Account & device</h3>
-    ${network ? `<form id="account-form" data-hire-id="${esc(d.id)}"><div class="account-grid"><label>AD ID<input name="adId" required maxlength="300" value="${esc(d.account?.adId)}"></label><label>Work email<input name="workEmail" type="email" required maxlength="300" value="${esc(d.account?.workEmail)}"></label><label>Laptop ID<input name="laptopId" required maxlength="300" value="${esc(d.account?.laptopId)}"></label></div><div class="actions"><button>Save account details</button></div></form><div class="actions"><button data-provision="${esc(d.id)}" ${!d.account || provisioningQueued ? 'disabled' : ''}>${icon('key')}${provisioningQueued ? 'Access queued' : 'Provision access'}</button></div><p class="fine">${!d.account ? 'Save account details before provisioning access.' : provisioningQueued ? 'Access work is queued. Resolve each group below; repeated provisioning will not create duplicates.' : 'Queue the requested group assignments and any required admin access.'}</p>` : `<dl><dt>AD ID</dt><dd>${esc(d.account?.adId || 'Awaiting network team')}</dd><dt>Work email</dt><dd>${esc(d.account?.workEmail || 'Not recorded')}</dd><dt>Laptop ID</dt><dd>${esc(d.account?.laptopId || 'Not recorded')}</dd></dl>`}
+    ${network ? `<form id="account-form" data-hire-id="${esc(d.id)}"><div class="account-grid"><label>AD ID<input name="adId" required maxlength="300" ${d.assignments.length ? 'readonly title="AD ID is locked after provisioning starts."' : ''} value="${esc(d.account?.adId)}"></label><label>Work email<input name="workEmail" type="email" required maxlength="300" value="${esc(d.account?.workEmail)}"></label><label>Laptop ID<input name="laptopId" required maxlength="300" value="${esc(d.account?.laptopId)}"></label></div><div class="actions"><button>Save account details</button></div></form><div class="actions"><button data-provision="${esc(d.id)}" data-available="${!!d.account && !provisioningQueued}" ${!d.account || provisioningQueued ? 'disabled' : ''}>${icon('key')}${provisioningQueued ? 'Access queued' : 'Provision access'}</button></div><p class="fine">${!d.account ? 'Save account details before provisioning access.' : provisioningQueued ? 'Access work is queued. Resolve each group below; repeated provisioning will not create duplicates.' : 'Queue the requested group assignments and any required admin access.'}</p>` : `<dl><dt>AD ID</dt><dd>${esc(d.account?.adId || 'Awaiting network team')}</dd><dt>Work email</dt><dd>${esc(d.account?.workEmail || 'Not recorded')}</dd><dt>Laptop ID</dt><dd>${esc(d.account?.laptopId || 'Not recorded')}</dd></dl>`}
     <h3 class="icon-heading">${icon('groups')}Requested groups</h3><ul>${d.requestedGroups.map(g => `<li>${esc(g)}</li>`).join('')}</ul>
     ${d.assignments.map(a => `<div class="resource"><strong>${esc(a.group)}</strong><p>${esc(groupStatus(a.status))} · ${a.attempts} attempt(s)</p>${a.status === 'pending' ? `<p class="fine">${network ? 'Choose Mark assigned once group membership is confirmed, or Record failure if it could not be assigned.' : 'The network team is preparing this group membership.'}</p>` : ''}${a.error ? `<p>${esc(a.error.replace(/^Simulated /, ""))}</p>` : ''}${network ? `<div class="actions">${a.status === 'pending' ? actionButton('assignments', a.id, 'success', 'Mark assigned') + actionButton('assignments', a.id, 'failure', 'Record failure') : a.status === 'failed' ? actionButton('assignments', a.id, 'retry', 'Retry failed group') : ''}</div>` : ''}</div>`).join('')}
     <h3 class="icon-heading">${icon('key')}Access requests</h3>${d.requests.map(r => `<div class="resource"><strong>${esc(r.kind)} request</strong><p>${esc(r.status)}${r.ticket ? ` · ${esc(r.ticket.key)}` : ''}</p>${r.kind === 'admin' ? '<p>Dedicated-form route; separate from Slack.</p>' : ''}${network ? `<div class="actions">${r.status === 'pending' ? actionButton('requests', r.id, 'ticket', 'Create ticket') : r.kind === 'admin' && r.status === 'ticket-created' ? actionButton('requests', r.id, 'grant', 'Grant access') + actionButton('requests', r.id, 'deny', 'Decline request') : r.kind === 'admin' && r.status === 'granted' ? actionButton('requests', r.id, 'verify', 'Verify access') : ''}</div>` : ''}</div>`).join('')}
@@ -182,6 +197,7 @@ $('detail').addEventListener('submit', event => {
 });
 $('detail').addEventListener('click', event => {
   const button = event.target.closest('button');
+  if (button?.disabled) return;
   if (button?.dataset.provision) run(async () => { await api(`/api/hires/${button.dataset.provision}/provision`, 'POST', {}); await refresh(); return 'Access work queued. Resolve the group assignments below and follow any admin request.'; });
   else if (button?.dataset.action) run(async () => { await api(`/api/${button.dataset.kind}/${button.dataset.resource}/actions`, 'POST', { action: button.dataset.action }); await refresh(); });
 });

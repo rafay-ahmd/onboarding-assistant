@@ -8,3 +8,7 @@ data/
 *.sqlite-wal
 *.sqlite-shm
 
+
+.env
+.env.*
+.local/

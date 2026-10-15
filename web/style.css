@@ -105,3 +105,18 @@ a { color: var(--accent); }
   .card-top { flex-wrap: wrap; }
   .card-top .status { max-width: 100%; }
 }
+
+.progress-heading {display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px;}
+.progress-heading strong {font-size:24px;color:var(--accent);font-variant-numeric:tabular-nums;}
+.access-progress progress {display:block;appearance:none;width:100%;height:12px;border:0;border-radius:20px;background:var(--subtle);overflow:hidden;accent-color:var(--accent);}
+.access-progress progress::-webkit-progress-bar {background:var(--subtle);border-radius:20px;}
+.access-progress progress::-webkit-progress-value {background:var(--accent);border-radius:20px;}
+.access-progress progress::-moz-progress-bar {background:var(--accent);border-radius:20px;}
+.access-progress p.fine {margin:12px 0 0;}
+.review-destination {display:flex;flex-direction:column;gap:4px;background:var(--subtle);padding:16px;border-radius:8px;margin:20px 0;color:var(--ink);}
+.review-destination span {font-size:13px;color:var(--muted);}
+.review-footer {justify-content:flex-end;border-top:1px solid var(--border);padding-top:20px;margin-top:24px;}
+.request-review #live-message {min-height:260px;line-height:1.65;}
+.request-review .eyebrow {margin:0 0 6px;}
+
+@media (max-height: 800px) { .request-review {padding:20px;} .request-review #live-message {min-height:180px;} .review-footer {margin-top:16px;padding-top:16px;} }
