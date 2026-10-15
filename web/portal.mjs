@@ -17,6 +17,7 @@ const icon = name => `<svg class="ui-icon" viewBox="0 0 24 24" fill="none" strok
 $('refresh').insertAdjacentHTML('afterbegin', icon('refresh'));
 $('create-form').querySelector('button[type="submit"]').insertAdjacentHTML('afterbegin', icon('plus'));
 let actors = [], actorId = '', selectedId = '', hires = [], nextOffset = null, version = 0;
+let plannerProfileIds = new Set();
 let busy = false;
 let onboardingProfiles = [], editingProfileId = '', editingRevision = null;
 let locationDefaults = [], editingLocationRevision = null;
@@ -183,7 +184,8 @@ async function loadDetail(hireId) {
   const d = await api(`/api/hires/${hireId}`);
   if (token !== version || selectedId !== hireId) return;
   $('planner-link').href='/planner?hireId='+encodeURIComponent(d.id)+'&profile='+encodeURIComponent(d.profileId);
-  $('planner-link').hidden=currentActor().role!=='hire'||!d.accessSummary?.supported;
+  // Recipe availability is independent of whether the profile supports live Slack.
+  $('planner-link').hidden=currentActor().role!=='hire'||!plannerProfileIds.has(d.profileId);
   const network = currentActor().role === 'network';
   const provisioningQueued = d.requestedGroups.every(group => d.assignments.some(a => a.group === group))
     && (!d.adminRequired || d.requests.some(r => r.kind === 'admin'));
@@ -299,5 +301,10 @@ $('detail').addEventListener('click', event => {
   if (button?.dataset.provision) run(async () => { await api(`/api/hires/${button.dataset.provision}/provision`, 'POST', {}); await refresh(); return 'Access work queued. Resolve the group assignments below and follow any admin request.'; });
   else if (button?.dataset.action) run(async () => { await api(`/api/${button.dataset.kind}/${button.dataset.resource}/actions`, 'POST', { action: button.dataset.action }); await refresh(); });
 });
-try { await loadActors(); await refresh(); }
+try {
+  const response=await fetch('/profiles.json');
+  if(!response.ok)throw Error('Planner profile catalogue unavailable.');
+  plannerProfileIds=new Set((await response.json()).map(profile=>profile.id));
+  await loadActors(); await refresh();
+}
 catch (error) { feedback(`Portal unavailable: ${error.message}`, true); }
