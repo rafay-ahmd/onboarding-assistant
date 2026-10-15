@@ -216,12 +216,18 @@ export function seedDemo(store) {
   const actors = [
     { id: 'em-vibgy', name: 'Alex Example (demo EM)', role: 'em', locations },
     { id: 'em-other', name: 'Morgan (other demo EM)', role: 'em', locations },
+    { id: 'em-pugazh', name: 'Pugazh (demo EM)', role: 'em', locations },
     { id: 'network-toronto', name: 'Toronto network (demo)', role: 'network', locations: ['Toronto'] },
     { id: 'network-berlin', name: 'Berlin network (demo)', role: 'network', locations: ['Berlin'] }
   ];
   store.transaction(() => {
     // Recreate the seed only after an explicit demo reset; never overwrite EM edits.
     if (!store.get('profiles', profileId)) store.put('profiles', { id: profileId, name: 'Dealertrack developer', groups: ['DEMO-DEVELOPERS'], adminRequired: false, revision: 1 });
+    // This stable ID also maps the linked planner to the reviewed CMS draft recipe.
+    // Only the confirmed organization group is seeded; AWS/VPN/repo teams need review.
+    if (!store.get('profiles', 'cms-developer')) store.put('profiles', {
+      id: 'cms-developer', name: 'CMS developer', groups: ['TR-AP-GitHub-CMS'], adminRequired: true, revision: 1
+    });
     for (const location of locations) if (!store.get('locationDefaults', location)) store.put('locationDefaults', { id: location, groups: [], revision: 1 });
     for (const a of actors) {
       const existing = store.get('actors', a.id);
@@ -246,4 +252,10 @@ export function seedDemo(store) {
       if (accountRequest) store.put('requests', { ...accountRequest, payload: { ...accountRequest.payload, firstName: 'Vibgy', lastName: 'Joseph', name: 'Vibgy Joseph' } });
     });
   }
+  // Demo-only identities and timing; no Slack binding, account grant or real submission.
+  // Keep the payload/key stable and replay it on startup without resetting progress.
+  platform.create('em-pugazh', 'seed-cms-sameer-v1', {
+    firstName: 'Sameer', lastName: 'Mehta', email: 'sameer@example.invalid',
+    startDate: '2026-11-02', location: 'Toronto', profileId: 'cms-developer'
+  });
 }

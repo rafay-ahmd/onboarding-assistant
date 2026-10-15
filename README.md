@@ -20,6 +20,8 @@ Open the profile circle at the top right to switch fictional accounts. The selec
 
 Demo roles: **Alex Example is the EM; Vibgy Joseph is the Toronto new hire**. Startup updates the original fictional seed labels without deleting onboarding progress. The legacy EM actor ID remains `em-vibgy` for API compatibility; resolve its displayed name through actor discovery.
 
+The account switcher also includes **Pugazh** (CMS engineering manager, `em-pugazh`) and **Sameer Mehta** (his CMS developer demo hire). Choose Pugazh to see Sameer's plan and the seeded **CMS developer** profile; choose Sameer and open **Access planner & workstation checks** for the linked CMS recipe. That recipe covers Windows/WSL, VS Code, CMS GitHub and manual setup dependencies. CMS has no inventory checker or live Slack submission. Toronto, the November 2 demo start date and `sameer@example.invalid` are fictional demo values. The managed profile seeds only `TR-AP-GitHub-CMS` and required admin; AWS/VPN/repository groups require team review. Startup or `npm run seed` adds missing demo records without resetting saved progress or profile edits. Refresh the browser after seeding an already-running server.
+
 For the presentation, UI actions use normal product wording (Provision access, Create ticket, Grant access) and omit “mock” badges. These still execute only the local simulations described above; provider flags and real-access verification remain separate.
 
 Account saves require valid unsaved edits; reverting the fields disables Save again. New-hire creation requires a completed valid form, and replies require nonempty text. Successful saves reset the form's change baseline; failed saves preserve edits for retry. The local planner continues to autosave its fields.
@@ -150,7 +152,7 @@ The current screen is single-operator. Explicitly verified own Slack records upd
 
 ## CMS integration with the portal and Slack planner
 
-CMS profile selection is available at `/planner?profile=cms-developer`; `/` remains the existing SQLite role-based portal. The platform API supports EM-managed profiles, but this static CMS planner template is not automatically registered in its SQLite catalogue. The live Slack backend remains Dealertrack-specific. CMS does not mount the live Slack client, make `/api/slack/` requests, or import portal/Slack identities into its form. Switching back to Dealertrack restores its connected-account request dialogs, readiness bar, admin Slack route and report import, without showing the CMS form or local queue. Historical mock modules remain fixtures for Dealertrack and supply CMS’s local draft simulation only.
+CMS profile selection is available at `/planner?profile=cms-developer`; `/` is the SQLite role-based portal. The catalogue now seeds a managed `cms-developer` profile and linked Pugazh/Sameer demo accounts; the richer static CMS recipe remains a separate record. The live Slack backend remains Dealertrack-specific. CMS does not mount the live Slack client or make `/api/slack/` requests. Switching back to Dealertrack restores its connected-account request dialogs, readiness bar, admin Slack route and report import, without showing the CMS form or local queue. Historical mock modules remain fixtures for Dealertrack and supply CMS’s local draft simulation only.
 
 
 ## Hire-linked Slack workflow (October 15, 2026)

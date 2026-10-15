@@ -54,6 +54,7 @@ test('structured names preserve compound names and validate both fields without 
 
 test('create is atomic/idempotent, independent of payload key order, with conflict detection', t => {
   const { store, app } = fixture(t);
+  const initialCount=store.list('hires').length;
   const hire = app.create('em-vibgy', 'create-1', input);
   assert.equal(hire.requests.length, 1);
   assert.equal(hire.requests[0].status, 'pending');
@@ -61,12 +62,12 @@ test('create is atomic/idempotent, independent of payload key order, with confli
   assert.ok(hire.blockers.length > 0);
   assert.equal(app.create('em-vibgy', 'create-1', Object.fromEntries(Object.entries(input).reverse())).id, hire.id);
   rejects(() => app.create('em-vibgy', 'create-1', { ...input, name: 'Changed' }), 409, 'IDEMPOTENCY_CONFLICT');
-  assert.equal(store.list('hires').length, 3);
+  assert.equal(store.list('hires').length, initialCount+1);
   assert.equal(store.list('requests', { hireId: hire.id }).length, 1);
   rejects(() => app.create('em-vibgy', '', input), 400);
   rejects(() => app.create('em-vibgy', 'invalid', { ...input, startDate: '2026-02-30' }), 400);
   rejects(() => app.create('em-vibgy', 'no-groups', { ...input, requestedGroups: [] }), 400);
-  assert.equal(store.list('hires').length, 3);
+  assert.equal(store.list('hires').length, initialCount+1);
 });
 
 test('roles, location and immutable self mapping are enforced by service operations', t => {
@@ -160,7 +161,7 @@ test('seed is repeatable and reset clears only the application tables before res
   assert.equal(store.list('actors').length, 0);
   seedDemo(store);
   assert.equal(app.list('em-vibgy').items.length, 2);
-  assert.equal(store.list('requests').length, 2);
+  assert.equal(store.list('requests').length, store.list('hires').length);
 });
 
 test('SQLite restart preserves identity, account, requests, history and command receipts', t => {
