@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DT · Team onboarding</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/portal.css"></head>
+<body>
+  <header><div class="brand">DT<span> / </span>ONBOARDING</div><a href="/planner">Local access planner & workstation checks ↗</a></header>
+  <main>
+    <section class="intro"><p class="eyebrow">YOUR TEAM’S NEXT CHAPTER</p><h1>A place to start.</h1><p>Create an onboarding plan, prepare the account, and see what still needs attention.</p></section>
+    <div class="notice">LOCAL DEMO · Identity selection impersonates fictional actors. Jira, AD and admin workflows use temporary platform stubs. Nothing is sent or provisioned externally.</div>
+    <section class="panel actor-bar"><label>View as demo actor<select id="actor" aria-label="Demo actor"></select></label><p id="scope"></p><button id="refresh" class="secondary">Refresh shared data</button></section>
+    <div id="feedback" role="status" aria-live="polite"></div>
+    <section id="create-section" class="panel" hidden>
+      <div class="section-title"><div><p class="eyebrow">ENGINEERING MANAGER</p><h2>Welcome someone new.</h2></div></div>
+      <form id="create-form">
+        <div class="form-grid">
+          <label>Employee name<input name="name" required maxlength="300" placeholder="Full name"></label>
+          <label>Start date<input name="startDate" type="date" required></label>
+          <label>Location<select name="location"><option>Toronto</option><option>Berlin</option></select></label>
+          <label>Pre-account email <span>Optional</span><input name="email" type="email" maxlength="300" placeholder="May be added later"></label>
+          <label>Profile<select name="profileId"><option value="dealertrack-developer">Dealertrack developer (draft)</option></select></label>
+          <label>Admin access<select name="adminRequired"><option value="false">Not required</option><option value="true">Required</option></select></label>
+        </div>
+        <label>Requested AD groups <span>One per line; confirm with EM</span><textarea name="requestedGroups" required placeholder="Explicit group names"></textarea></label>
+        <button type="submit">Create hire & queue mock account request</button>
+      </form>
+    </section>
+    <div class="section-title"><div><h2 id="list-title">Team onboarding</h2><p id="list-summary">Loading shared data…</p></div><span class="badge">SQLITE · SHARED LOCALLY</span></div>
+    <div class="workspace"><section aria-label="Hires"><div id="hires"></div><button id="more" class="secondary" hidden>Load more hires</button></section><section id="detail" class="panel" aria-label="Selected hire"><p>Select a hire to view their plan.</p></section></div>
+    <footer>Hackathon 26 · Fictional Toronto / Berlin teams. Simulated progress is separate from real access and workstation readiness.</footer>
+  </main>
+  <script type="module" src="/portal.mjs"></script>
+</body>
+</html>

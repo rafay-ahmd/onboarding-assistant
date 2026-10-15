@@ -1,5 +1,10 @@
 import http from "node:http";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+import { openStore } from './backend/db/store.mjs';
+import { createPlatform, seedDemo } from './backend/services/platform.mjs';
+import { apiRouter } from './backend/api/router.mjs';
 
 const root = new URL("./", import.meta.url);
 
@@ -8,7 +13,10 @@ const routes = {
   "/request-queue-ui.mjs": "web/request-queue-ui.mjs",
   "/mock-slack-adapter.mjs": "web/mock-slack-adapter.mjs",
   "/request-queue.css": "web/request-queue.css",
-  "/": "web/index.html",
+  "/": "web/portal.html",
+  "/planner": "web/index.html",
+  "/portal.mjs": "web/portal.mjs",
+  "/portal.css": "web/portal.css",
   "/style.css": "web/style.css",
   "/app.mjs": "web/app.mjs",
   "/model.mjs": "web/model.mjs",
@@ -24,37 +32,49 @@ const types = {
   json: "application/json",
 };
 
-const server = http.createServer(async (req, res) => {
-  if (req.method !== "GET") {
-    res.writeHead(405);
-    res.end();
-    return;
-  }
+export function createApp({ databasePath = fileURLToPath(new URL('./data/onboarding.sqlite', root)), seed = true, workflows } = {}) {
+  const store = openStore(databasePath);
+  if (seed) seedDemo(store);
+  const platform = createPlatform(store, workflows ? { workflows } : {});
+  const api = apiRouter(platform);
+  const server = http.createServer(async (req, res) => {
+    if (await api(req, res)) return;
+    if (req.method !== "GET") {
+      res.writeHead(405);
+      res.end();
+      return;
+    }
 
-  const route = routes[new URL(req.url, "http://127.0.0.1").pathname];
+    const route = routes[new URL(req.url, "http://127.0.0.1").pathname];
 
-  if (!route) {
-    res.writeHead(404);
-    res.end("Not found");
-    return;
-  }
+    if (!route) {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
 
-  try {
-    const body = await readFile(new URL(route, root));
-    res.writeHead(200, {
-      "Content-Type": types[route.split(".").pop()],
-      "Cache-Control": "no-store",
-      "X-Content-Type-Options": "nosniff",
-      "Content-Security-Policy":
-        "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
-    });
-    res.end(body);
-  } catch {
-    res.writeHead(500);
-    res.end("Local asset unavailable");
-  }
-});
+    try {
+      const body = await readFile(new URL(route, root));
+      res.writeHead(200, {
+        "Content-Type": types[route.split(".").pop()],
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy":
+          "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      });
+      res.end(body);
+    } catch {
+      res.writeHead(500);
+      res.end("Local asset unavailable");
+    }
+  });
+  server.on('close', () => store.close());
+  return { server, platform };
+}
 
-server.listen(Number(process.env.PORT || 4173), "127.0.0.1", () =>
-  console.log(`Onboarding preview: http://127.0.0.1:${server.address().port}`),
-);
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const { server } = createApp();
+  server.listen(Number(process.env.PORT || 4173), "127.0.0.1", () =>
+    console.log(`Onboarding preview: http://127.0.0.1:${server.address().port}`),
+  );
+}

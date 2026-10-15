@@ -1,5 +1,7 @@
 # Request queue integration contract (mock v1)
 
+This document describes the original browser-local queue, preserved at `/planner`. The shared SQLite portal at `/` now has a separate platform API and temporary account/group/admin stubs; see [the implemented platform contract](hackathon-plan.md#implemented-platform-contract-track-a). Migrating this entitlement queue into that backend remains Rafay's work. No automatic email-based import connects the two stores.
+
 This increment is a browser-local simulation. It sends no messages, calls no APIs and creates no real tickets. It changes neither the existing manual access state nor setup completion. No server mutation endpoints were added.
 
 ## Ownership boundary

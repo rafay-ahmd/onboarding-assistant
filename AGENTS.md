@@ -11,6 +11,8 @@ Read README.md, package.json, and relevant implementation files before changing 
 
 ## Current functionality: implemented
 
+Track A now adds a shared SQLite portal at `/`, using Node 24+ built-in SQLite and API/service modules under `backend/`. EM, network-by-location and self-only hire views use seeded demo impersonation with backend scope checks. Account/device entry, immutable hire IDs, transactional command idempotency, events, seed/reset commands and temporary account/group/admin workflow stubs are implemented. The original browser-local planner below is preserved at `/planner`; its data and real setup dependencies remain separate. See the implemented contract and evidence in `docs/hackathon-plan.md` before changing the API.
+
 - A buildless browser dashboard served by a small Node.js HTTP server on loopback, port 4173 by default.
 - A single draft Dealertrack developer profile: access requirements, routing, required fields, setup steps and dependencies.
 - A shared new-hire details form. It fills request drafts; it is not an EM login or workflow trigger.
@@ -25,8 +27,8 @@ Read README.md, package.json, and relevant implementation files before changing 
 
 ## Not implemented yet
 
-- Authentication, multiple users, role-based authorization or location-based assignment.
-- Shared database or a multi-user backend. server.mjs currently serves a fixed list of static files and supports GET only.
+- Production authentication/SSO. Seeded demo actors and backend role/location checks exist; the actor header deliberately allows local demo impersonation.
+- Rafay's durable entitlement queue integration and full provider workflows. The shared database and platform API exist; account/group/admin simulations currently use explicitly labelled temporary platform stubs.
 - Live Slack submission, real helpdesk ticket creation, automatic status retrieval, reminders or escalation. A mock queue is now implemented (see update below).
 - Running workstation checks from the dashboard (currently run the script separately and import its JSON).
 - Automatic installations, builds, remote machine management or setup execution/resume.
@@ -43,7 +45,7 @@ Explore and implement:
 - Profile-based dashboards appropriate to each role.
 - Coordinate shared backend services with Sameer's MCP adapter so both clients apply the same rules.
 
-These are planned capabilities, not existing behavior. Exact permissions, identity provider, persistence, location routing and MCP transport/tools remain design decisions to agree on.
+The platform portion is implemented as described above. Production identity and MCP transport/tools remain separate work; see the delivery plan for precise implemented and pending boundaries.
 Real role separation needs backend-enforced authorization and durable per-user data; hiding controls in the UI or using a localStorage role switch is only a demo.
 
 ### Rafay's stream: Slack and helpdesk integration
@@ -72,7 +74,11 @@ Before changing shared server routes, request/state contracts or persistence, co
 
 ## Code map
 
-- server.mjs: static HTTP server, loopback binding and fixed asset routes.
+- server.mjs: loopback HTTP server, shared platform API wiring and fixed asset routes.
+- backend/db/: SQLite migration/repository and fictional demo seed/reset.
+- backend/services/: actor-scoped platform commands and replaceable temporary workflow stubs.
+- backend/api/router.mjs: JSON API envelopes, local-origin checks and payload limits.
+- web/portal.html, web/portal.css, web/portal.mjs: shared EM/network/hire portal at `/`.
 - web/index.html, web/style.css: dashboard structure and styling.
 - web/app.mjs: browser interactions, persistence and report display.
 - web/model.mjs: draft generation, state normalization, dependencies and validation.
@@ -87,7 +93,7 @@ No npm dependency installation is currently required.
 
     node server.mjs
 
-Open http://127.0.0.1:4173. Node must be installed/on PATH; do not hardcode a developer's Codex-bundled runtime path into the app.
+Open http://127.0.0.1:4173 for the shared portal or `/planner` for the original local planner. Node 24+ must be installed/on PATH; do not hardcode a developer's Codex-bundled runtime path into the app.
 
     node --test tests/*.test.mjs
     pwsh -NoProfile -File ./scripts/Test-OnboardingReadiness.ps1
@@ -125,7 +131,7 @@ Implemented on access-request-improvements: review/justification dialog, one bro
 
 New modules: web/request-queue.mjs (domain), web/mock-slack-adapter.mjs (no-network transport), web/request-queue-ui.mjs (UI/persistence), web/request-queue.css. Tests: tests/request-queue.test.mjs. Read docs/request-queue-contract.md before connecting authentication, persistence, backend routes or MCP tools.
 
-The shared server remains static/GET-only; only asset routes were added. The existing state shape and storage key are unchanged. The mock queue uses its own versioned key and normalized email as a temporary identity; replace with an authorized immutable user ID and durable idempotency before live integration. Planned cross-stream API contracts remain to be agreed.
+At the queue increment's baseline the server was static/GET-only. Track A has since added the shared API and SQLite portal, preserving the existing planner state shape and storage key at `/planner`. The browser-local mock queue still uses its own versioned key and normalized email as temporary identity; migrating it to immutable hire IDs is Rafay's remaining integration. Do not connect it to the shared portal by matching email.
 
 Access-card display synchronization: queue changes notify app.mjs, which projects matching employee/profile/entitlement progress into clearly labelled Mock badges. Actual manual state and setup dependency rules remain unchanged; header counts distinguish actual and mock verification. See accessCardStatus and its identity-isolation test before changing this mapping.
 

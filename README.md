@@ -6,13 +6,21 @@ For the three-person POC work split, shared API/data contracts, milestones and a
 
 ## Start the dashboard
 
-From this directory with Node.js available:
+From this directory with Node.js 24 or newer available (built-in `node:sqlite`; no npm install required):
 
 ```powershell
 node server.mjs
 ```
 
-Open http://127.0.0.1:4173. No package installation is needed. The server binds only to loopback and serves a fixed list of static assets. It has no submission API or machine-execution endpoint.
+Open http://127.0.0.1:4173 for the shared team portal. It seeds fictional Toronto/Berlin hires and actors, persists data in Git-ignored `data/onboarding.sqlite`, and provides the local API described in [the delivery plan](docs/hackathon-plan.md#implemented-platform-contract-track-a). The server binds only to loopback. There is no machine-execution endpoint or external submission.
+
+Select a demo actor to use the EM, location-assigned network or individual hire dashboard. EMs create hires; network operators record AD ID/work email/laptop ID, then queue and advance mock provisioning. Use **Refresh shared data** to see another session's updates. Actor selection is demo impersonation, not authentication; backend role/location checks apply to the selected actor. Temporary platform stubs simulate Jira tickets, groups and admin access until Rafay replaces them. MCP remains Sameer's track.
+
+`npm run seed` restores any missing fictional fixtures without clearing existing data. To reset only this app's demo database, stop the server and run `npm run reset:demo`, then restart. Reset deletes this app's local hires, actors, commands and activity; it does not clear browser-local planner data. Schema migrations run automatically on startup.
+
+### Existing local planner
+
+Open http://127.0.0.1:4173/planner for the separate access planner and workstation checks. Its existing browser records are preserved and are not imported into shared hires. Backend entitlement submission remains pending Rafay's integration; its reserved API returns `501 WORKFLOW_PENDING`.
 
 Enter employee details, prepare individual access-request drafts, open the admin-rights form, and record ticket links/status manually. Granting and verification are separate states. Plans are stored in this browser's localStorage; clear the plan before switching employees. Imported reports stay in memory only. Demo actions use fictional identities and reports. No messages or tickets are sent.
 
