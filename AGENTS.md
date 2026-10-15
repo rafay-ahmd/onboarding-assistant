@@ -150,3 +150,10 @@ The product UI now uses real Slack requests directly on access cards: Review req
 ## Request review and readiness update
 
 The access tab shows a progress bar based on verified permissions, not messages sent or approvals. Linked Slack status takes precedence over a manual record. Full-message editing, save-draft and explicit send use a styled dialog; replies and actual verification also use dialogs. The server accepts draft edits only before delivery and sends the exact final reviewed text. No external request is created by preparing or saving a draft. See docs/page-flows.md for all page workflows.
+
+
+## Current access-only screen (October 15, 2026)
+
+The onboarding details form is removed pending the incoming role-based dashboards. Request identity comes from the connected Slack account; GitHub username and AWS group are entered inside their individual request dialogs. Legacy saved hire fields remain stored for compatibility but are not used by this screen. Local admin rights now use the same helpdesk Slack review/edit/send/sync/verify flow as the other helpdesk entitlements; no separate admin form link or manager field is shown. This UI routing change does not establish that the external helpdesk bot accepts the route. App-generated messages may be filtered by helpdesk; successful submission alone does not imply a response or ticket.
+
+The current screen is single-operator. Explicitly verified own Slack records update local access/setup prerequisites without depending on a removed hire email field. When multi-user dashboards arrive, replace this local state mapping with backend-authorized hire/account records; never apply one connected user’s verification across hires. This section supersedes earlier form/admin-route UI descriptions.

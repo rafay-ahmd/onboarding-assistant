@@ -13,7 +13,7 @@ function fixture(overrides={}){
     if(method==='conversations.replies')return {messages:overrides.messages||[],response_metadata:{}};
     throw Error('Unexpected method');
   };
-  const service=createSlackService({call,store,profile,expectedUserId:overrides.expectedUserId});
+  const service=createSlackService({call,store,profile:overrides.profile||profile,expectedUserId:overrides.expectedUserId});
   return {service,events,store,sentMessages};
 }
 const input={accessId:'vs',justification:'Required to develop the Dealertrack platform.'};
@@ -60,4 +60,11 @@ test('invalid edits and unconfirmed sends leave drafts unchanged without sending
  for(const text of ['',null,'x'.repeat(6001)]){await assert.rejects(f.service.edit(request.id,text),/message_requires/);await assert.rejects(f.service.send(request.id,true,text),/message_requires/);}
  await assert.rejects(f.service.send(request.id,false,'A valid message that was not confirmed.'),/confirmation/);
  assert.equal((await f.service.list())[0].text,request.text);assert.equal((await f.service.list())[0].status,'draft');assert.equal(f.events.length,0);
+});
+
+test('current profile prepares admin rights through the shared Slack flow without hire-form details',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const current=JSON.parse(await readFile(new URL('../profiles/dealertrack-developer.json',import.meta.url),'utf8'));
+ const f=fixture({profile:current});const {request}=await f.service.prepare({accessId:'admin',justification:'Install approved development dependencies and configure IIS.'});
+ assert.equal(request.accessId,'admin');assert.equal(request.status,'draft');assert.match(request.text,/Local admin rights/);assert.match(request.text,/<@UACTOR>/);assert.equal(f.events.length,0);
 });

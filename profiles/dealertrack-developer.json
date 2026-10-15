@@ -8,7 +8,7 @@
     "https://trader.atlassian.net/wiki/spaces/CLOUD/pages/4891476045/AWS+Client+VPN+Transition+to+AS24+Okta+Authentication"
   ],
   "access": [
-    {"id":"admin","name":"Local admin rights","route":"form","url":"https://go.helpdesk.autoscout24.com/servicedesk/customer/portal/105/create/471","reason":"Install approved dependencies and configure IIS.","priority":"Early blocker","evidence":"New-hire experience","fields":["manager"]},
+    {"id":"admin","name":"Local admin rights","route":"helpdesk","reason":"Install approved dependencies and configure IIS.","priority":"Early blocker","evidence":"Onboarding access requirement","fields":[]},
     {"id":"vs","name":"Visual Studio subscription","route":"helpdesk","reason":"Use the approved development tooling.","evidence":"Setup guide","fields":[]},
     {"id":"github","name":"Dealertrack GitHub organization","route":"helpdesk","reason":"Clone the required tdr-dealertrack repositories.","evidence":"Setup guide","fields":["githubUsername"]},
     {"id":"jfrog","name":"JFrog Artifactory","route":"helpdesk","reason":"Restore packages from dtncan-nuget-local.","evidence":"Setup guide","fields":[]},
