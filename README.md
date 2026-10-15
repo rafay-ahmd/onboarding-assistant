@@ -30,9 +30,9 @@ Share the committed seed code and migrations, not `data/onboarding.sqlite`. Each
 
 ### EM-managed onboarding profiles
 
-In an EM workspace, open **Manage onboarding profiles** to create a profile or select an existing one to edit. Set its name, Toronto/Berlin AD groups and default admin requirement. All EMs share the catalogue; network and hire roles cannot change it. Saved profiles live in SQLite (schema v2), with a seeded Dealertrack developer profile. Startup migration preserves existing onboarding records and never overwrites edited defaults.
+In an EM workspace, open **Manage onboarding profiles** to create or edit a profile with one AD-group list and a default admin requirement. All EMs share the catalogue; network and hire roles cannot change it. Network operators configure **Location AD group defaults** for their assigned location. Both settings live in SQLite (schema v3). Migration combines the previous per-location profile lists without losing groups or changing existing onboarding plans.
 
-When creating a hire, choose the profile and location to prefill AD groups and admin access. You can adjust those values for that hire. Each plan stores the profile ID, name, revision and its own group/admin values, so future profile edits do not change existing plans or provisioning. Save stays disabled until valid edits exist. Conflicting profile edits are rejected; use Refresh to reload the saved profile before retrying. These templates configure the shared portal; the separate Slack planner's entitlement/workstation recipe remains in `profiles/dealertrack-developer.json`.
+When creating a hire, the profile prefills its groups and admin requirement. An EM can adjust those values for that hire; the network team's location groups are always added automatically, with duplicates removed. Each plan snapshots both sets of groups and their revisions, so later edits affect only new hires. Save stays disabled until valid edits exist; stale revisions are rejected. Use Refresh before retrying a conflicting edit. Normal startup and seed preserve saved defaults. These templates configure the shared portal; the separate Slack planner's entitlement/workstation recipe remains in `profiles/dealertrack-developer.json`.
 
 ### Existing local planner
 

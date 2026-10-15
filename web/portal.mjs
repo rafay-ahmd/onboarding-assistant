@@ -19,6 +19,7 @@ $('create-form').querySelector('button[type="submit"]').insertAdjacentHTML('afte
 let actors = [], actorId = '', selectedId = '', hires = [], nextOffset = null, version = 0;
 let busy = false;
 let onboardingProfiles = [], editingProfileId = '', editingRevision = null;
+let locationDefaults = [], editingLocationRevision = null;
 const formBaselines = new WeakMap();
 const formValues = form => JSON.stringify([...new FormData(form)].map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value]));
 function canSubmit(form) {
@@ -28,7 +29,8 @@ function canSubmit(form) {
   }
   for (const groups of form.querySelectorAll('[data-groups]')) {
     const names = groups.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    groups.setCustomValidity(!names.length || names.length > 30 || names.some(name => name.length > 300) ? 'Enter 1–30 groups, up to 300 characters each.' : '');
+    const max = Number(groups.dataset.maxGroups || 30);
+    groups.setCustomValidity((!names.length && groups.dataset.allowEmpty !== 'true') || names.length > max || names.some(name => name.length > 300) ? `Enter up to ${max} groups, up to 300 characters each.` : '');
   }
   return !busy && values.every(([key, value]) => !form.elements[key].required || String(value).trim())
     && formValues(form) !== formBaselines.get(form) && form.checkValidity();
@@ -49,6 +51,7 @@ function trackForm(form) {
 }
 trackForm($('create-form'));
 trackForm($('profile-form'));
+trackForm($('location-form'));
 try { actorId = sessionStorage.getItem('onboarding-demo-actor') || ''; } catch { /* Selection still works without browser storage. */ }
 const pendingCommands = new Map();
 function feedback(message, error = false) { $('feedback').textContent = String(message).replace(/\bmock\s*/gi, ''); $('feedback').dataset.error = String(error); }
@@ -92,9 +95,29 @@ function groupNames(value) { return value.split(/\r?\n/).map(s => s.trim()).filt
 function applyProfileDefaults() {
   const form = $('create-form');
   const profile = onboardingProfiles.find(p => p.id === form.elements.profileId.value);
-  form.elements.requestedGroups.value = profile?.groupsByLocation[form.elements.location.value]?.join('\n') || '';
+  form.elements.requestedGroups.value = profile?.groups.join('\n') || '';
   form.elements.adminRequired.value = String(profile?.adminRequired ?? false);
+  renderLocationPreview();
   syncForm(form);
+}
+function renderLocationPreview() {
+  const defaults = locationDefaults.find(item => item.id === $('create-form').elements.location.value);
+  $('location-defaults-preview').textContent = defaults?.groups.length ? `Also added by the ${defaults.id} network team: ${defaults.groups.join(', ')}` : 'No additional location groups configured by the network team.';
+}
+function editLocationDefaults() {
+  const defaults = locationDefaults.find(item => item.id === $('location-editor-select').value);
+  editingLocationRevision = defaults?.revision ?? null;
+  $('location-form').elements.groups.value = defaults?.groups.join('\n') || '';
+  formBaselines.set($('location-form'), formValues($('location-form')));
+  syncForm($('location-form'));
+}
+async function loadLocationDefaults() {
+  locationDefaults = (await api('/api/location-defaults')).items;
+  const previous = $('location-editor-select').value;
+  $('location-editor-select').innerHTML = locationDefaults.map(item => `<option value="${esc(item.id)}">${esc(item.id)}</option>`).join('');
+  $('location-editor-select').value = locationDefaults.some(item => item.id === previous) ? previous : locationDefaults[0]?.id || '';
+  renderLocationPreview();
+  if (currentActor().role === 'network') editLocationDefaults();
 }
 function editProfile() {
   editingProfileId = $('profile-editor-select').value;
@@ -104,8 +127,7 @@ function editProfile() {
   form.reset();
   form.elements.namedItem('name').value = profile?.name || '';
   form.elements.adminRequired.value = String(profile?.adminRequired ?? false);
-  form.elements.torontoGroups.value = profile?.groupsByLocation.Toronto.join('\n') || '';
-  form.elements.berlinGroups.value = profile?.groupsByLocation.Berlin.join('\n') || '';
+  form.elements.groups.value = profile?.groups.join('\n') || '';
   $('save-profile').textContent = profile ? 'Save profile changes' : 'Create profile';
   formBaselines.set(form, formValues(form));
   syncForm(form);
@@ -133,6 +155,8 @@ async function refresh({ more = false } = {}) {
   const personal = actor.role === 'hire';
   $('create-section').hidden = actor.role !== 'em';
   $('profiles-section').hidden = actor.role !== 'em';
+  $('location-section').hidden = actor.role !== 'network';
+  if (['em', 'network'].includes(actor.role)) await loadLocationDefaults();
   if (actor.role === 'em') await loadProfiles();
   $('hire-sidebar').hidden = personal;
   $('workspace').classList.toggle('personal', personal);
@@ -181,6 +205,7 @@ async function run(action) {
   if (busy) return;
   busy = true;
   $('profile-editor-select').disabled = true;
+  $('location-editor-select').disabled = true;
   $('refresh').disabled = true;
   document.querySelectorAll('button').forEach(b => { if (!b.disabled) { b.dataset.pending = 'true'; b.disabled = true; } });
   try { const result = await action(); feedback(result || 'Up to date.'); }
@@ -188,9 +213,10 @@ async function run(action) {
   finally {
     busy = false; $('refresh').disabled = false;
     $('profile-editor-select').disabled = false;
+    $('location-editor-select').disabled = false;
     document.querySelectorAll('[data-pending]').forEach(b => { b.disabled = false; delete b.dataset.pending; });
     renderProfile();
-    for (const form of document.querySelectorAll('#create-form, #account-form, #profile-form')) syncForm(form);
+    for (const form of document.querySelectorAll('#create-form, #account-form, #profile-form, #location-form')) syncForm(form);
   }
 }
 $('profile-accounts').addEventListener('click', event => {
@@ -229,14 +255,13 @@ $('create-form').addEventListener('submit', event => {
   });
 });
 $('create-form').elements.profileId.addEventListener('change', applyProfileDefaults);
-$('create-form').elements.location.addEventListener('change', applyProfileDefaults);
+$('create-form').elements.location.addEventListener('change', renderLocationPreview);
 $('profile-editor-select').addEventListener('change', editProfile);
 $('profile-form').addEventListener('submit', event => {
   event.preventDefault();
   if (!canSubmit(event.target)) return;
   const fields = new FormData(event.target);
-  const body = { name: fields.get('name'), adminRequired: fields.get('adminRequired') === 'true',
-    groupsByLocation: { Toronto: groupNames(fields.get('torontoGroups')), Berlin: groupNames(fields.get('berlinGroups')) } };
+  const body = { name: fields.get('name'), adminRequired: fields.get('adminRequired') === 'true', groups: groupNames(fields.get('groups')) };
   if (editingProfileId) body.revision = editingRevision;
   run(async () => {
     const profile = await api(editingProfileId ? `/api/profiles/${editingProfileId}` : '/api/profiles', editingProfileId ? 'PUT' : 'POST', body);
@@ -244,6 +269,18 @@ $('profile-form').addEventListener('submit', event => {
     await loadProfiles(); $('profile-editor-select').value = profile.id; editProfile();
     $('create-form').elements.profileId.value = profile.id; applyProfileDefaults();
     return 'Profile saved. Its defaults are ready for the next hire; existing plans are unchanged.';
+  });
+});
+$('location-editor-select').addEventListener('change', editLocationDefaults);
+$('location-form').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!canSubmit(event.target)) return;
+  const location = $('location-editor-select').value;
+  const body = { groups: groupNames(event.target.elements.groups.value), revision: editingLocationRevision };
+  run(async () => {
+    await api(`/api/location-defaults/${encodeURIComponent(location)}`, 'PUT', body);
+    await loadLocationDefaults();
+    return 'Location defaults saved. New hires here will receive these groups; existing plans are unchanged.';
   });
 });
 $('detail').addEventListener('submit', event => {

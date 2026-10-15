@@ -11,8 +11,8 @@ function text(value, field, optional = false) {
   requireValue(typeof value === 'string' && value.trim().length <= 300 && (optional || value.trim()), 400, 'INVALID_INPUT', `Provide ${field} (up to 300 characters).`);
   return value.trim();
 }
-function groups(value) {
-  requireValue(Array.isArray(value) && value.length > 0 && value.length <= 30, 400, 'INVALID_INPUT', 'Supply 1–30 explicit groups for each location.');
+function groups(value, { empty = false, max = 60 } = {}) {
+  requireValue(Array.isArray(value) && (empty || value.length > 0) && value.length <= max, 400, 'INVALID_INPUT', `Supply ${empty ? '0' : '1'}–${max} explicit groups.`);
   return [...new Set(value.map(g => text(g, 'group')))];
 }
 function canonical(value) {
@@ -39,10 +39,8 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
   function network(actor) { requireValue(actor.role === 'network', 403, 'FORBIDDEN', 'This operation requires the assigned network operator.'); }
   function manager(actor) { requireValue(actor.role === 'em', 403, 'FORBIDDEN', 'Only an EM can manage onboarding profiles.'); }
   function profileFields(body) {
-    requireValue(body.groupsByLocation && typeof body.groupsByLocation === 'object' && !Array.isArray(body.groupsByLocation), 400, 'INVALID_INPUT', 'Configure groups for Toronto and Berlin.');
-    requireValue(Object.keys(body.groupsByLocation).every(location => locations.includes(location)), 400, 'INVALID_INPUT', 'Choose supported profile locations.');
     requireValue(typeof body.adminRequired === 'boolean', 400, 'INVALID_INPUT', 'adminRequired must be true or false.');
-    return { name: text(body.name, 'profile name'), groupsByLocation: Object.fromEntries(locations.map(location => [location, groups(body.groupsByLocation[location])])), adminRequired: body.adminRequired };
+    return { name: text(body.name, 'profile name'), groups: groups(body.groups), adminRequired: body.adminRequired };
   }
   function event(actor, hireId, type, resourceId, detail = {}) {
     return store.put('events', { id: id(), hireId, actorId: actor.id, type, resourceId, detail, createdAt: now() });
@@ -90,6 +88,21 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
   }
   return {
     actors: () => store.list('actors'),
+    locationDefaults(actorId) {
+      const acting = actor(actorId);
+      requireValue(['em', 'network'].includes(acting.role), 403, 'FORBIDDEN', 'Location defaults are available to EM and network teams.');
+      return { items: locations.filter(location => acting.locations.includes(location)).map(location => store.get('locationDefaults', location)) };
+    },
+    updateLocationDefaults(actorId, location, key, body) {
+      return mutate(actorId, `location-defaults:${location}`, key, body, acting => {
+        network(acting);
+        requireValue(acting.locations.includes(location), 403, 'FORBIDDEN', 'Only your assigned location can be configured.');
+        const previous = store.get('locationDefaults', location);
+        requireValue(previous, 404, 'NOT_FOUND', 'Location not found.');
+        requireValue(body.revision === previous.revision, 409, 'LOCATION_CHANGED', 'Location defaults changed in another session. Refresh and try again.');
+        return store.put('locationDefaults', { ...previous, groups: groups(body.groups, { empty: true, max: 30 }), revision: previous.revision + 1, updatedBy: acting.id, updatedAt: now() });
+      });
+    },
     profiles(actorId) {
       manager(actor(actorId));
       const items = [];
@@ -143,11 +156,14 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
         requireValue(profile, 400, 'INVALID_INPUT', 'Choose an existing onboarding profile.');
         requireValue(!body.managerId || body.managerId === acting.id, 403, 'FORBIDDEN', 'An EM can only create their own hires.');
         requireValue(typeof body.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.startDate) && Number.isFinite(Date.parse(body.startDate)) && new Date(body.startDate).toISOString().slice(0, 10) === body.startDate, 400, 'INVALID_INPUT', 'Provide a valid start date.');
-        const requestedGroups = groups(body.requestedGroups ?? profile.groupsByLocation[body.location]);
+        const profileGroups = groups(body.requestedGroups ?? profile.groups);
+        const locationDefaults = store.get('locationDefaults', body.location);
+        const locationGroups = locationDefaults.groups;
+        const requestedGroups = [...new Set([...profileGroups, ...locationGroups])];
         const adminRequired = body.adminRequired ?? profile.adminRequired;
         requireValue(typeof adminRequired === 'boolean', 400, 'INVALID_INPUT', 'adminRequired must be true or false.');
         const hire = { id: id(), name, email, startDate: body.startDate, managerId: acting.id, location: body.location,
-          profileId: profile.id, profileName: profile.name, profileRevision: profile.revision, requestedGroups, adminRequired, createdAt: now() };
+          profileId: profile.id, profileName: profile.name, profileRevision: profile.revision, profileGroups, locationGroups, locationRevision: locationDefaults.revision, requestedGroups, adminRequired, createdAt: now() };
         if (structuredName) Object.assign(hire, { firstName, lastName });
         store.put('hires', hire);
         request(acting, hire, 'account', 'account', { name, ...(structuredName ? { firstName, lastName } : {}), location: hire.location, startDate: hire.startDate });
@@ -201,7 +217,8 @@ export function seedDemo(store) {
   ];
   store.transaction(() => {
     // Recreate the seed only after an explicit demo reset; never overwrite EM edits.
-    if (!store.get('profiles', profileId)) store.put('profiles', { id: profileId, name: 'Dealertrack developer', groupsByLocation: { Toronto: ['DEMO-TORONTO-DEVELOPERS'], Berlin: ['DEMO-BERLIN-DEVELOPERS'] }, adminRequired: false, revision: 1 });
+    if (!store.get('profiles', profileId)) store.put('profiles', { id: profileId, name: 'Dealertrack developer', groups: ['DEMO-DEVELOPERS'], adminRequired: false, revision: 1 });
+    for (const location of locations) if (!store.get('locationDefaults', location)) store.put('locationDefaults', { id: location, groups: [], revision: 1 });
     for (const a of actors) {
       const existing = store.get('actors', a.id);
       if (!existing || (a.id === 'em-vibgy' && existing.name === 'Vibgy (demo EM)')) store.put('actors', a);

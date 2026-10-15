@@ -167,7 +167,7 @@ Each PR should state its track, contract changes, tests run and any remaining mo
 
 Approved clarifications from Vibgy: use fictional Toronto/Berlin locations; include clearly labelled temporary workflow stubs so the dashboard can be demonstrated before Rafay's integration.
 
-Runtime: Node 24+, built-in `node:sqlite`, no package dependencies. `npm start` runs the loopback server. SQLite schema v2 migrates on startup; `npm run seed` is non-destructive and idempotent. Stop the server before `npm run reset:demo`, which clears only this application's local demo tables (including profiles) and reseeds. DB files/sidecars under `data/` are ignored.
+Runtime: Node 24+, built-in `node:sqlite`, no package dependencies. `npm start` runs the loopback server. SQLite schema v3 migrates on startup; `npm run seed` is non-destructive and idempotent. Stop the server before `npm run reset:demo`, which clears only this application's local demo tables (including profiles and location defaults) and reseeds. DB files/sidecars under `data/` are ignored.
 
 ### Sameer: HTTP integration
 
@@ -254,9 +254,10 @@ Verification for this update: all 23 tests passed with `node --test --test-isola
 ### Implemented profile catalogue contract
 
 - `GET /api/profiles` returns `{data:{items:[...]}}`; EM only, shared across EMs.
-- `POST /api/profiles` accepts `{name,groupsByLocation:{Toronto:[...],Berlin:[...]},adminRequired}`; EM only. Uses the existing actor/idempotency headers. Returns the created profile with immutable UUID and revision 1.
+- `POST /api/profiles` accepts `{name,groups:[...],adminRequired}`; EM only. Uses the existing actor/idempotency headers. Returns the created profile with immutable UUID and revision 1.
 - `PUT /api/profiles/:id` accepts the same fields plus `revision` from the last read; EM only. Returns the incremented revision. Stale edits return `409 PROFILE_CHANGED` without overwriting data.
-- Groups are trimmed/deduplicated; each location requires 1–30 nonempty names, each at most 300 characters. Profile names require 1–300 characters; adminRequired is boolean.
-- `POST /api/hires` now accepts any stored profile ID. Omit requestedGroups/adminRequired to use saved defaults for the hire location; explicit per-hire values remain supported. The created plan snapshots profileName, profileRevision and its effective groups/admin requirement. Later profile edits do not mutate existing hires, requests or assignments.
-- Migration v2 creates/seeds the catalogue and snapshots legacy Dealertrack labels. Normal startup/seed preserves EM edits. The separate Slack planner's recipe and connected-user identity remain independent.
-- Verification: service/HTTP tests cover shared EM management, forbidden roles, idempotent creation, invalid payload rollback, stale-revision rejection, location defaults/overrides, hire snapshot isolation, migration, restart and seed/reset. Browser verification created Platform engineer and a Berlin hire using its saved group/admin defaults.
+- Profile groups are trimmed/deduplicated, with 1–60 nonempty names of at most 300 characters. Profile names require 1–300 characters; adminRequired is boolean.
+- `GET /api/location-defaults` returns only the EM/network actor's assigned locations. `PUT /api/location-defaults/:location` accepts `{groups:[...],revision}` and requires that location's network role. Lists allow 0–30 groups; stale edits return `409 LOCATION_CHANGED`.
+- `POST /api/hires` accepts any stored profile ID. Omit requestedGroups/adminRequired to use profile defaults; explicit per-hire values remain supported. Network location groups are always added, even with an EM override. Groups are deduplicated. The plan snapshots profileName, profileRevision, profileGroups, locationGroups, locationRevision and effective groups/admin requirement. Later edits do not mutate existing hires, requests or assignments.
+- Migration v2 creates/seeds profiles and snapshots legacy Dealertrack labels. V3 combines previous per-location profile lists and adds location defaults. Normal startup/seed preserves saved edits. The separate Slack planner's recipe and connected-user identity remain independent.
+- Verification: all 44 tests pass. Service/HTTP tests cover shared EM management, forbidden roles and locations, idempotency, invalid payload rollback, stale revisions, additive location defaults, override handling, hire snapshot isolation, v1/v2 migration, restart and seed/reset. Browser verification covers network default saves and the EM profile/location preview.

@@ -22,9 +22,18 @@ const migrations = [String.raw`
   INSERT INTO profiles VALUES ('dealertrack-developer', '{"id":"dealertrack-developer","name":"Dealertrack developer","groupsByLocation":{"Toronto":["DEMO-TORONTO-DEVELOPERS"],"Berlin":["DEMO-BERLIN-DEVELOPERS"]},"adminRequired":false,"revision":1}');
   UPDATE hires SET body=json_set(body, '$.profileName', 'Dealertrack developer', '$.profileRevision', 1)
     WHERE json_extract(body, '$.profileId')='dealertrack-developer' AND json_extract(body, '$.profileName') IS NULL;
+`, String.raw`
+  CREATE TABLE locationDefaults (id TEXT PRIMARY KEY, body TEXT NOT NULL);
+  INSERT INTO locationDefaults VALUES ('Toronto', '{"id":"Toronto","groups":[],"revision":1}'), ('Berlin', '{"id":"Berlin","groups":[],"revision":1}');
+  UPDATE profiles SET body=json_remove(json_set(body, '$.groups', json((
+    SELECT json_group_array(value) FROM (
+      SELECT DISTINCT value FROM json_each(json_extract(profiles.body, '$.groupsByLocation.Toronto'))
+      UNION SELECT DISTINCT value FROM json_each(json_extract(profiles.body, '$.groupsByLocation.Berlin'))
+    )
+  ))), '$.groupsByLocation');
 `];
 
-const tables = new Set(['actors', 'hires', 'accounts', 'requests', 'assignments', 'events', 'profiles']);
+const tables = new Set(['actors', 'hires', 'accounts', 'requests', 'assignments', 'events', 'profiles', 'locationDefaults']);
 export function openStore(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
@@ -45,7 +54,7 @@ export function openStore(path) {
     resetDemo() {
       db.exec('BEGIN IMMEDIATE');
       try {
-        for (const name of ['commands', 'events', 'assignments', 'requests', 'accounts', 'hires', 'actors', 'profiles']) db.exec(`DELETE FROM ${name}`);
+        for (const name of ['commands', 'events', 'assignments', 'requests', 'accounts', 'hires', 'actors', 'profiles', 'locationDefaults']) db.exec(`DELETE FROM ${name}`);
         db.exec('COMMIT');
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },

@@ -18,14 +18,21 @@
             <label>Profile name<input name="name" required maxlength="300" placeholder="e.g. Dealertrack developer"></label>
             <label>Default admin access<select name="adminRequired"><option value="false">Not required</option><option value="true">Required</option></select></label>
           </div>
-          <div class="profile-groups-grid">
-            <label>Toronto AD groups<textarea name="torontoGroups" data-groups required placeholder="One group per line"></textarea></label>
-            <label>Berlin AD groups<textarea name="berlinGroups" data-groups required placeholder="One group per line"></textarea></label>
-          </div>
-          <p class="fine">Use 1–30 groups per location. The selected location determines which defaults a new hire receives.</p>
+          <label>Profile AD groups<textarea name="groups" data-groups data-max-groups="60" required placeholder="One group per line"></textarea></label>
+          <p class="fine">One list for this role at every location. Network-team location defaults are added automatically.</p>
           <button type="submit" id="save-profile" disabled>Create profile</button>
         </form>
       </details>
+    </section>
+    <section id="location-section" class="panel" hidden>
+      <h2>Location AD group defaults</h2>
+      <p>These groups are added to every new onboarding plan at your location, alongside the selected profile's groups. Existing plans keep their saved groups.</p>
+      <label>Your location<select id="location-editor-select"></select></label>
+      <form id="location-form">
+        <label>Default AD groups<textarea name="groups" data-groups data-allow-empty="true" placeholder="One group per line; leave empty for no location defaults"></textarea></label>
+        <p class="fine">Up to 30 groups. Only the assigned network team can edit this location.</p>
+        <button type="submit" disabled>Save location defaults</button>
+      </form>
     </section>
     <section id="create-section" class="panel" hidden>
       <div class="section-title"><div><p class="eyebrow">ENGINEERING MANAGER</p><h2>Welcome someone new.</h2></div></div>
@@ -39,7 +46,8 @@
           <label>Onboarding profile<select name="profileId" required><option value="">Choose a profile</option></select></label>
           <label>Admin access<select name="adminRequired"><option value="false">Not required</option><option value="true">Required</option></select></label>
         </div>
-        <label>Requested AD groups <span>Prefilled from the profile; adjust for this hire if needed</span><textarea name="requestedGroups" data-groups required placeholder="Choose a profile to prefill groups"></textarea></label>
+        <label>Profile AD groups for this hire <span>Prefilled from the profile; adjust if needed</span><textarea name="requestedGroups" data-groups data-max-groups="60" required placeholder="Choose a profile to prefill groups"></textarea></label>
+        <p id="location-defaults-preview" class="fine"></p>
         <button type="submit">Create onboarding plan</button>
       </form>
     </section>
