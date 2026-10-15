@@ -1,63 +1,61 @@
-# MCP onboarding demo
+# CMS onboarding demo: Sameer joins Pugazh’s team
 
-This walkthrough uses fictional hires and the portal's simulated providers. It sends no real tickets or messages and performs no workstation setup. Keep the separate `/planner` live Slack flow out of this demo.
+Use Sameer Mehta as the new hire, Pugazh as the engineering manager and Toronto’s network actor for account/device work. All provider actions below are local simulations. They send no Slack messages or actual tickets and do not verify real access or install software.
 
 ## Prepare
 
-1. Use Node 24+, run `npm ci`, then `npm start`. Open `http://127.0.0.1:4173/`.
-2. Follow [MCP setup](mcp.md) to configure an EM connection (`em-vibgy`, displayed as Alex Example) and a Toronto network connection (`network-toronto`). Both use the same API URL. Do not change actors through tool arguments.
-3. In the EM dashboard, create or select a **Fictional CMS demo** profile with groups `DEMO-CMS-DEVELOPERS` and `DEMO-CMS-REPO`, with admin required. Record its generated ID through `list_profiles`. These are fictional groups, not CMS policy or actual AD groups. The static `cms-developer` planner template does not become a SQLite profile automatically.
-4. Switch the dashboard to the Toronto network account. Set its location default to `DEMO-TORONTO-NETWORK`. Existing hires keep their previous snapshots; these settings apply to new plans.
-5. Use a new run suffix such as `demo-01` for new intended commands. Keep every key stable when demonstrating a retry of the same command. Do not paste real hire records or secrets.
+1. Use Node 24+, run `npm ci`, then keep `npm start` running at `http://127.0.0.1:4173/`.
+2. The Sameer/Pugazh fixtures and managed CMS profile come from [the CMS demo-account increment](https://github.com/rafay-ahmd/onboarding-assistant/pull/6). They have already been seeded in the working demo database. A fresh database on the MCP branch alone does not contain these fixtures until that increment is integrated. Stop if the actors/profile are absent; do not silently use another person’s identity or a Dealertrack profile.
+3. Discover actors with `GET /api/demo/actors`. Use `em-pugazh`, `network-toronto`, and Sameer’s generated `hire-<hireId>` actor. Copy the existing hire ID; do not call `create_hire` to create Sameer again.
+4. Follow [MCP setup](mcp.md). For this rehearsal, `onboarding-em` is Pugazh, `onboarding-network` is Toronto’s network role and `onboarding-me` is Sameer’s self-only role. Each connection keeps its actor fixed.
+5. Through `list_profiles`, confirm `cms-developer`, group `TR-AP-GitHub-CMS` and admin required. Leave AWS/VPN/repository groups unset until the team confirms them. Demo location, start date, email and machine IDs are fictional.
 
-## Create through MCP; inspect in the dashboard
+## 1. New hire sees the plan
 
-Ask the EM connection:
+Ask Codex:
 
-> List onboarding profiles, then create Casey Example in Toronto using the Fictional CMS demo profile, starting 2026-11-03. Leave the pre-account email empty and use the saved profile defaults. Use idempotency key demo-01-casey-create. Return the hire ID and blockers.
+> Use onboarding-me/get_my_onboarding with no arguments, then get_profile_requirements with no arguments. I am Sameer Mehta, joining CMS under Pugazh. Show my requirements, current blockers and who needs to act. Do not change anything.
 
-Expected: one saved hire with separate first/last names, profile groups plus the Toronto location group, `adminRequired: true`, and a pending account request. No work email is fabricated. Save the returned hire ID for the remaining steps.
+Expected: exactly one visible hire, managed profile `cms-developer`, the confirmed GitHub group and required admin. Initially the plan needs account/device details, account-request completion, group provisioning and a separate admin request. A manager’s view must return the same plan data.
 
-Switch the dashboard to Alex Example (EM) and click Refresh. Casey appears with the same requirements and blockers. Repeat the same MCP create call with identical arguments/key: it returns the same hire ID and does not create another person. Changing a name while retaining that key produces a conflict.
+## 2. Demonstrate role and prerequisite checks
 
-## Record details and queue provisioning
+Trying `provision_access` through `onboarding-me` must return `403 FORBIDDEN`. This tool is assigned-network work; the hire cannot provision their own plan. Trying through `onboarding-network` before recording account details must return `409 ACCOUNT_REQUIRED`. Rejected calls create no assignments.
 
-First ask the Toronto network connection to provision Casey before recording account details, using `demo-01-casey-early-provision`.
+Do not repeat the before-account prerequisite example after the account is recorded: the plan has already advanced.
 
-Expected: `409 ACCOUNT_REQUIRED`, with no assignments created. This is a deliberate rejected command, not uncertain delivery.
+## 3. Network records details through Codex
 
-Then ask the network connection:
+Ask Codex:
 
-> Record Casey's AD ID as DEMO-CASEY, work email as casey@example.invalid and laptop ID as DEMO-CASEY-LT. Use key demo-01-casey-account. Then provision access using key demo-01-casey-provision.
+> Use onboarding-network to record account details for my existing Sameer hire: AD ID DEMO-SAMEER, work email sameer@example.invalid and laptop DEMO-SAMEER-LT. Use idempotency key sameer-demo-account-20261015-v1. Replay precisely the same call once, then queue provisioning with key sameer-demo-provision-20261015-v1 and replay that call once too. Do not create another hire or change other plans.
 
-Expected: account recording completes the simulated account request. Provisioning queues three group assignments and one separate admin request. Repeating provisioning does not duplicate successful or pending assignments. No real AD account or admin entitlement is created.
+Expected: account request completed; exactly one `TR-AP-GitHub-CMS` assignment and one separate admin request queued. Replays keep the same hire/resource IDs. The backend stores original command receipts, so follow replays with `get_onboarding_status` for current progress.
 
-In the Toronto network dashboard, Refresh and select Casey. Confirm the same account/device details, pending assignments and admin request. The Berlin network actor must not see or update Casey. An EM tool call cannot record account details or provision access.
+Switch the dashboard to Toronto’s network account, select Sameer and Refresh. The account/device details and pending work match the tool results. The hire and manager connections cannot perform these network mutations.
 
-## Fail one group, retry it and explain blockers
+## 4. Failure/retry and admin approval in the dashboard
 
-Use the network dashboard to mark two groups assigned and record failure for the third. Ask the EM connection:
+In the network dashboard, record failure for Sameer’s pending GitHub-group assignment. Ask Codex through `onboarding-me` to explain the returned failed-group blocker and outstanding admin request.
 
-> Get Casey's current onboarding status. Explain the blockers returned by the backend and identify the failed assignment. Do not claim the workstation is ready.
+Click Retry failed group, then Mark assigned. Only the failed group is retried. Advance the separate simulated admin request through Create ticket → Grant access → Verify access. These provider actions remain dashboard operations; no action tools should be invented by Codex.
 
-Expected: the failed group and outstanding admin request remain visible. The adapter reports persisted backend blockers rather than inferring completion from a ticket or approval.
+Expected: the group succeeds with two attempts, admin is verified and account request is completed. The simulated blockers become empty. The portal still reports real workstation readiness as unassessed.
 
-Retry the failed group in the dashboard, then mark it assigned. Successful groups are not rerun. Advance the separate admin request through Create ticket → Grant → Verify. Ask MCP for current status again: the simulated onboarding blockers are empty; `realReadiness` remains unassessed. The hire's self-only dashboard shows the same account and provisioning progress.
+## 5. Hire and manager agree
 
-Provider simulation controls deliberately remain in the dashboard for this six-tool scope. Do not ask the model to invent an action tool, call Slack or execute workstation commands to complete the journey.
+Ask Codex:
 
-## Show the optional-admin branch
+> Through onboarding-me, inspect my current status. Compare it with onboarding-em’s status for the same Sameer hire. Explain what the local workflow completed and what has not been verified on my real workstation.
 
-Create Jordan Example using the same profile and Toronto location, but explicitly set `adminRequired: false`; use `demo-01-jordan-create`. Record distinct fictional account/device details and provision under new keys. Expected: group assignments are queued, but no admin request is created. Profile/location defaults still apply.
+Switch the dashboard between Pugazh and Sameer and Refresh; both see the same shared account/group/admin progress. Refreshing or starting a fresh Codex session retains those SQLite records. The automated integration suite separately tests a real SQLite backend restart and durable command receipts.
 
-## Persistence and recovery
+## Rehearsed result
 
-Stop and restart only the backend process, then refresh the dashboard and call `get_onboarding_status` again. Account details, profile/location snapshots, requests, assignments and event history remain. MCP can keep running while the backend restarts; it reports unavailable/timeout errors if called during the outage. On an uncertain mutation result, reuse the original key and arguments. Always retrieve current status after a mutation replay because the saved response can be older than the current record.
+On October 15, 2026, fresh Codex CLI sessions loaded the three configured stdio servers and called their tools against the running app. Sameer’s self-only restriction, denied self-provisioning, missing-account prerequisite, account replay and provisioning deduplication were exercised through Codex. A browser then exercised Sameer’s group failure/retry and simulated admin ticket/grant/verification, checked manager/hire parity and reloaded the completed plan. Browser Slack requests were blocked; none were attempted. No real access or workstation readiness was verified.
 
-`list_hires` returns a page and `nextOffset`; follow that offset if the demo database has more hires than fit on one page.
+The working demo has already advanced through those steps. Replaying saved mutation keys returns the original receipt; inspect fresh status rather than expecting the initial blockers to reappear. Do not reset the working database to repeat the presentation. For a clean start, use a deliberately disposable database with the fixture increments integrated, re-discover its generated hire ID and update the self connection. Resetting changes IDs and invalidates a previously configured self actor. Do not commit a local database or generated hire IDs.
 
-## Reset and exit
+The eight-tool adapter still includes `create_hire` for the manager’s separate new-plan scenario; it is deliberately skipped when demoing Sameer’s existing plan.
 
-The smoke tests use temporary stores and require no reset of your working demo. To clear a deliberately disposable demo database, stop the backend and run `npm run reset:demo`, then restart. This deletes all local portal demo hires, profiles, location defaults and command history; it does not reset workstation configuration or the separate planner/Slack stores. Recreate the fictional CMS profile/location defaults after a reset. Otherwise, retain the database and use new fictional names/run keys for a later presentation.
-
-Stop the MCP host connections when finished. MCP setup and the SDK smoke tests are implemented; the actual presenter should rehearse the host-session prompts once before the hackathon demo.
+The subsequent read-only Codex rehearsal used `get_my_onboarding {}` and `get_profile_requirements {}` without a supplied hire ID. Codex resolved Sameer correctly, explained Windows/WSL/VS Code, the assigned GitHub group and required admin, returned repository request fields/routes and documentation links, and kept AWS/VPN decisions and programme checklist applicability open. Pugazh's explicit-hire requirements view agreed with the self view. No plan data was changed by those tools.

@@ -168,7 +168,7 @@ test('stdio process completes the SDK handshake and tool calls without stdout di
   let stderr='';transport.stderr.on('data',data=>stderr+=data.toString());
   t.after(()=>client.close());
   await client.connect(transport);
-  assert.equal((await client.listTools()).tools.length,6);
+  assert.equal((await client.listTools()).tools.length,8);
   const profiles=await tool(client,'list_profiles');
   assert.ok(profiles.items.length>0);
   const hire=await tool(client,'create_hire',createInput);

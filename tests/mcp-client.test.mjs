@@ -26,11 +26,11 @@ test('configuration requires an explicit actor and a loopback origin',()=>{
   for(const timeoutMs of [0,NaN,1.5,60001])assert.throws(()=>validateConfig({actorId:'em-vibgy',timeoutMs}));
 });
 
-test('six tools expose strict schemas with explicit mutation keys and no actor-switch arguments',async t=>{
+test('eight tools expose strict schemas with explicit mutation keys and no actor-switch arguments',async t=>{
   let calls=0;
   const client=await fixture(t,async()=>{calls++;return json({data:{}});});
   const {tools}=await client.listTools();
-  assert.deepEqual(tools.map(t=>t.name).sort(),['create_hire','get_onboarding_status','list_hires','list_profiles','provision_access','record_account_details']);
+  assert.deepEqual(tools.map(t=>t.name).sort(),['create_hire','get_my_onboarding','get_onboarding_status','get_profile_requirements','list_hires','list_profiles','provision_access','record_account_details']);
   for(const tool of tools) {
     assert.equal(tool.inputSchema.additionalProperties,false);
     assert.equal(tool.inputSchema.properties.actorId,undefined);
@@ -38,6 +38,9 @@ test('six tools expose strict schemas with explicit mutation keys and no actor-s
   }
   const invalid=[
     {name:'list_hires',arguments:{actorId:'em-other'}},
+    {name:'get_my_onboarding',arguments:{hireId:'another-hire'}},
+    {name:'get_profile_requirements',arguments:{profileId:'cms-developer'}},
+    {name:'get_profile_requirements',arguments:{hireId:'../../api/slack/requests'}},
     {name:'list_hires',arguments:{offset:-1}},
     {name:'get_onboarding_status',arguments:{hireId:'../../api/slack/requests'}},
     {name:'create_hire',arguments:{...createInput,idempotencyKey:undefined}},

@@ -1,6 +1,6 @@
 # Three-person hackathon delivery plan
 
-Updated: October 15, 2026. Status: Track A delivered on `main` through `7ba2f9a`; the initial six-tool Track C MCP adapter is implemented on `feat/mcp-onboarding-tools`. Track B portal entitlement integration remains pending.
+Updated: October 15, 2026. Status: Track A delivered on `main` through `7ba2f9a`; the eight-tool Track C MCP adapter is implemented on `feat/mcp-onboarding-tools`. Track B portal entitlement integration remains pending.
 
 Use the [implemented platform contract](#implemented-platform-contract-track-a) and [profile/location contract](#implemented-profile-catalogue-contract) as the current API authority. The original shared proposal below describes the intended full workflow; its entitlement actions are not all implemented. In particular, portal entitlement creation returns `501 WORKFLOW_PENDING`.
 
@@ -8,7 +8,7 @@ Immediate handoff:
 
 - **Vibgy:** platform delivered, including EM-managed profiles, network location defaults, persistence, role-specific screens and action gating. Coordinate any new persistence or API requirements from B/C.
 - **Rafay:** replace/extend `backend/services/demo-workflows.mjs` through the documented injection seam; integrate durable entitlement requests into the portal using immutable hire IDs. The separate `/planner` live Slack flow already exists, but is not connected to fictional portal hires.
-- **Sameer:** connect the presenter MCP host and rehearse [the demo](demo.md) using [the setup guide](mcp.md). The six-tool HTTP adapter and automated protocol/API/browser parity checks are implemented. Discover managed profile IDs through `list_profiles`; profile/location settings and provider outcomes remain dashboard operations in this increment.
+- **Sameer:** the presenter Codex CLI is connected and the [Sameer CMS demo](demo.md) is rehearsed using [the setup guide](mcp.md). The eight-tool HTTP adapter and protocol/API/browser parity checks are implemented. Discover managed profile IDs through `list_profiles`; profile/location settings and provider outcomes remain dashboard operations in this increment.
 
 ## Goal and demo
 
@@ -35,7 +35,7 @@ Portal tickets, assignments and service responses in this demo are simulated. Vi
 - `/planner` is a separate single-operator live Slack access flow with reviewed drafts, send/sync/reply and explicit actual-access verification. Historical browser-local mock queue modules remain development fixtures.
 - Read-only workstation inventory script and JSON report import; no automatic setup execution.
 - CMS adds a static draft profile and local simulation at `/planner?profile=cms-developer`, separate from the EM-managed SQLite profile catalogue. Dealertrack retains its connected-account Slack planner.
-- `mcp/` implements six stdio tools using the existing HTTP API, configured demo actors and explicit mutation idempotency keys. Setup/demo guides and SDK smoke tests are present; actual presenter-host registration and rehearsal remain pending.
+- `mcp/` implements eight stdio tools using the existing HTTP API, configured demo actors and explicit mutation idempotency keys. Setup/demo guides and SDK smoke tests are present. Fresh Codex CLI sessions have exercised the registered Pugazh/network/Sameer connections against the running app; the personalized CMS fixtures are supplied separately by the CMS demo-account increment.
 
 Reuse these modules rather than rebuilding them. Read [the queue contract](request-queue-contract.md) before changing queue persistence or state transitions.
 
@@ -154,11 +154,12 @@ Temporary platform stubs already cover account tickets, provisioning prerequisit
 - [x] Implement a local stdio MCP adapter using the supported MCP SDK; document install/start/configuration and the configured demo actor.
 - [x] Expose `list_hires`, `create_hire`, `get_onboarding_status`, `record_account_details`, and `provision_access` against the agreed HTTP API.
 - [x] Expose profile discovery through `list_profiles`; retain profile/location management in the dashboard for this scope, with existing role/revision checks.
+- [x] Expose `get_my_onboarding` and `get_profile_requirements` through shared read-only HTTP services. Resolve self from immutable hire identity; keep assigned group/admin snapshots separate from draft recipe candidates and sources; enforce existing hire/location visibility and avoid recipe guessing for custom profiles.
 - [x] Mutating tools accept an explicit idempotency key; preserve it across retries. Return useful validation/blocker errors and clear simulation labels.
 - [x] Keep stdout reserved for MCP messages; diagnostics go to stderr. Report backend unavailability clearly.
 - [x] Test fixture API responses and the real local API, actor restrictions, duplicate mutations and lost-response replay.
 - [x] Write a short demo script with expected results, fictional data and reset instructions.
-- [ ] Register the adapter in the presenter's MCP host and rehearse the documented journey. SDK stdio and browser checks do not establish that this host is configured.
+- [x] Register the adapter in the presenter's Codex CLI and rehearse the documented journey. Actual model-driven MCP calls verified Sameer's self scope, denied self-provisioning, account prerequisite and mutation replays. A browser exercised group failure/retry and simulated admin transitions; final Codex reads confirmed manager/hire parity, empty simulated blockers and unassessed real readiness. This does not claim workstation setup or real access was verified.
 
 ## Integration milestones
 
@@ -187,6 +188,8 @@ Integrate at each gate rather than waiting for three completed branches. Cut Sla
 Tests: run `npm ci`, then `npm test` or `node --test tests/*.test.mjs`. If the local sandbox blocks test child processes, use `node --test --test-isolation=none tests/*.test.mjs`; stdio tests still need subprocess access. Latest verification passed all 66 tests, including 13 MCP checks/subtests. A headless browser against an in-memory backend confirmed MCP-created hire visibility, account/provision refresh, dashboard failure/retry visibility through MCP and displayed blocker parity. No real Slack calls or running-demo database changes were made.
 
 After rebasing Track C onto main `91605af`, all 73 tests pass. MCP duplicate/restart checks now compare against the initial hire count so additional seed identities do not invalidate them. The earlier 66-test and browser checks above describe the pre-rebase checkpoint.
+
+New-hire read increment: all 77 tests pass. Added self-only resolution, manager/network denial without a selected hire, preserved snapshots after profile edits, CMS recipe/source/draft handling, unmapped-profile behavior, read-only HTTP routes and exact MCP/API parity. `GET /api/me/onboarding` returns own detail; `GET /api/me/onboarding/requirements` and `GET /api/hires/:id/requirements` provide scoped requirements. No schema or mutation contract changed. After reloading the local backend without resetting its database, a fresh Codex CLI session called both new tools without IDs, explained Sameer's CMS baseline, sources and open subteam questions, and confirmed Pugazh's requirements view agrees. These reads changed no plan state.
 
 Each PR should state its track, contract changes, tests run and any remaining mock behavior. This plan authorizes no live service submissions and does not claim the pending features already exist.
 

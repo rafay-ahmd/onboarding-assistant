@@ -7,6 +7,13 @@ const identifier=text.regex(/^[A-Za-z0-9_-]+$/,'Use an ID returned by the onboar
 const idempotencyKey=z.string().min(1).max(200).regex(/^[\x21-\x7e]+$/,'Use a stable key without spaces or control characters.');
 const hireInput={hireId:identifier};
 const tools=[
+  {name:'get_my_onboarding',title:'Inspect my onboarding',readOnly:true,
+    description:'Get the configured new-hire actor’s own onboarding plan, account details and current blockers without supplying an internal hire ID. Hire actors only; managers/network operators use get_onboarding_status for a visible hire. No real access is verified.',
+    schema:z.strictObject({}),path:()=>'/api/me/onboarding'},
+  {name:'get_profile_requirements',title:'Explain assigned profile requirements',readOnly:true,
+    description:'Read an onboarding plan’s assigned group/admin snapshot alongside its mapped team recipe, setup dependencies, required request fields, sources, draft status and open questions. Omit hireId for the configured new-hire actor’s own plan; managers/network operators must supply a visible hireId. Recipe candidates are not automatically required or approved entitlements. Unmapped profiles do not inherit another team’s recipe.',
+    schema:z.strictObject({hireId:identifier.optional()}),
+    path:args=>args.hireId?`/api/hires/${encodeURIComponent(args.hireId)}/requirements`:'/api/me/onboarding/requirements'},
   {name:'list_profiles',title:'List onboarding profiles',readOnly:true,
     description:'List the shared SQLite onboarding profiles as the configured demo EM. Use these IDs when creating hires; the static CMS planner catalogue is separate.',
     schema:z.strictObject({}),path:()=>'/api/profiles'},
