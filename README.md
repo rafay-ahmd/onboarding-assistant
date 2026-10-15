@@ -6,7 +6,7 @@ For the three-person POC work split, implemented API/data contracts, delivery ev
 
 ## Start the dashboard
 
-From this directory with Node.js 24 or newer available (built-in `node:sqlite`; no npm install required):
+From this directory with Node.js 24 or newer available (built-in `node:sqlite`):
 
 ```powershell
 node server.mjs
@@ -14,7 +14,7 @@ node server.mjs
 
 Open http://127.0.0.1:4173 for the shared team portal. It seeds fictional Toronto/Berlin hires and actors, persists data in Git-ignored `data/onboarding.sqlite`, and provides the local API described in [the delivery plan](docs/hackathon-plan.md#implemented-platform-contract-track-a). The server binds only to loopback. The portal has no machine-execution endpoint or external submission. The separate Dealertrack planner can send real Slack messages after review when configured.
 
-Open the profile circle at the top right to switch fictional accounts. The selected account stays active across reloads in that tab. EMs enter first and last name separately and create hires; network operators see their location's queue and record AD ID/work email/laptop ID, then queue and advance mock provisioning. Hires see a personal progress page. Use **Refresh** to see another session's updates. Account switching is demo impersonation, not authentication; backend role/location checks apply to the selected actor. Temporary platform stubs simulate Jira tickets, groups and admin access until Rafay replaces them. MCP remains Sameer's track.
+Open the profile circle at the top right to switch fictional accounts. The selected account stays active across reloads in that tab. EMs enter first and last name separately and create hires; network operators see their location's queue and record AD ID/work email/laptop ID, then queue and advance mock provisioning. Hires see a personal progress page. Use **Refresh** to see another session's updates. Account switching is demo impersonation, not authentication; backend role/location checks apply to the selected actor. Temporary platform stubs simulate Jira tickets, groups and admin access until Rafay replaces them.
 
 `npm run seed` restores any missing fictional fixtures without clearing existing data. To reset only this app's demo database, stop the server and run `npm run reset:demo`, then restart. Reset deletes this app's local hires, actors, commands and activity; it does not clear browser-local planner data. Schema migrations run automatically on startup.
 
@@ -35,6 +35,12 @@ Share the committed seed code and migrations, not `data/onboarding.sqlite`. Each
 In an EM workspace, open **Manage onboarding profiles** to create or edit a profile with one AD-group list and a default admin requirement. All EMs share the catalogue; network and hire roles cannot change it. Network operators configure **Location AD group defaults** for their assigned location. Both settings live in SQLite (schema v3). Migration combines the previous per-location profile lists without losing groups or changing existing onboarding plans.
 
 When creating a hire, the profile prefills its groups and admin requirement. An EM can adjust those values for that hire; the network team's location groups are always added automatically, with duplicates removed. Each plan snapshots both sets of groups and their revisions, so later edits affect only new hires. Save stays disabled until valid edits exist; stale revisions are rejected. Use Refresh before retrying a conflicting edit. Normal startup and seed preserve saved defaults. These templates configure the shared portal; the separate Slack planner's entitlement/workstation recipe remains in `profiles/dealertrack-developer.json`.
+
+### MCP tools and demo
+
+Run `npm ci` to install the pinned MCP dependencies before starting MCP or running the full test suite. The dashboard itself still runs without package dependencies. The local stdio adapter exposes `get_my_onboarding`, `get_profile_requirements`, `list_profiles`, `list_hires`, `create_hire`, `get_onboarding_status`, `record_account_details` and `provision_access` through the same HTTP API as the portal. Configure one demo actor per MCP server; the backend enforces the same role/location rules. Mutations require an explicit idempotency key, retained across retries.
+
+Follow [MCP setup and Codex configuration](docs/mcp.md) and the [Sameer CMS demo](docs/demo.md). Profile/location settings and simulated provider transitions remain dashboard operations. The static CMS planner profile is separate from the EM-managed SQLite catalogue; review the managed profile before using it with MCP. No real accounts or access are provisioned by these tools. Codex CLI connections for Pugazh, Toronto's network team and Sameer's self-only demo hire have been registered and rehearsed against the running app. The personalized fixtures come from the separate CMS demo-account increment; the demo guide explains that dependency for fresh databases.
 
 ### Existing local planner
 
@@ -77,7 +83,7 @@ Use an approved PowerShell runtime (`pwsh` is PowerShell 7). If company PowerShe
 - Use the fictional demo hire to generate individual requests with no live submission.
 - Load the healthy-inventory or missing-prerequisites report; both are explicitly labelled fictional.
 - Verify dependency behavior: admin **granted** does not unblock Oracle until changed to **verified**. Recording Oracle completion and verifying GitHub unblocks the setup review step.
-- Run `node --test tests/*.test.mjs` for routing, dependency, import-validation, and ticket-link checks.
+- After `npm ci`, run `npm test` for planner, backend and MCP checks, or `npm run test:mcp` for the MCP suite alone.
 - Test future installation stages in an approved disposable Windows VM with snapshots, never by undoing the existing workstation.
 
 ## Deliberately pending integrations

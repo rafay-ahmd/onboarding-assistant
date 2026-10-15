@@ -1,4 +1,5 @@
 import {slackAccessSummary} from './slack-request-store.mjs';
+import {profileRequirements as describeProfileRequirements} from './profile-requirements.mjs';
 import { randomUUID } from 'node:crypto';
 import { requireValue } from './errors.mjs';
 import { demoWorkflows } from './demo-workflows.mjs';
@@ -38,6 +39,10 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
     return hire;
   }
   function network(actor) { requireValue(actor.role === 'network', 403, 'FORBIDDEN', 'This operation requires the assigned network operator.'); }
+  function ownHireId(acting) {
+    requireValue(acting.role === 'hire' && acting.hireId, 403, 'FORBIDDEN', 'This operation requires a new-hire demo actor. Managers and network operators must select a visible hire.');
+    return acting.hireId;
+  }
   function manager(actor) { requireValue(actor.role === 'em', 403, 'FORBIDDEN', 'Only an EM can manage onboarding profiles.'); }
   function profileFields(body) {
     requireValue(typeof body.adminRequired === 'boolean', 400, 'INVALID_INPUT', 'adminRequired must be true or false.');
@@ -91,6 +96,17 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
   }
   return {
     actors: () => store.list('actors'),
+    myOnboarding(actorId) {
+      const acting=actor(actorId);
+      return detail(acting,ownHireId(acting));
+    },
+    profileRequirements(actorId,hireId) {
+      const acting=actor(actorId);
+      // Omitting the ID resolves only a hire's immutable self mapping, never the
+      // first result in a manager/network queue or a caller-supplied role.
+      const hire=hireFor(acting,hireId===undefined?ownHireId(acting):hireId);
+      return describeProfileRequirements(hire);
+    },
     locationDefaults(actorId) {
       const acting = actor(actorId);
       requireValue(['em', 'network'].includes(acting.role), 403, 'FORBIDDEN', 'Location defaults are available to EM and network teams.');
