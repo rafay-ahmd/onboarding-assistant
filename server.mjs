@@ -1,9 +1,11 @@
+import {createLiveApi} from './server/live-api.mjs';
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 
 const root = new URL("./", import.meta.url);
 
 const routes = {
+  "/live-requests.mjs": "web/live-requests.mjs",
   "/request-queue.mjs": "web/request-queue.mjs",
   "/request-queue-ui.mjs": "web/request-queue-ui.mjs",
   "/mock-slack-adapter.mjs": "web/mock-slack-adapter.mjs",
@@ -24,7 +26,10 @@ const types = {
   json: "application/json",
 };
 
+const liveApi = await createLiveApi(root);
 const server = http.createServer(async (req, res) => {
+  const requestUrl=new URL(req.url,"http://127.0.0.1");
+  if(await liveApi(req,res,requestUrl))return;
   if (req.method !== "GET") {
     res.writeHead(405);
     res.end();

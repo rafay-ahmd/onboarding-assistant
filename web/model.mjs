@@ -50,3 +50,10 @@ export function normalizeState(state, profile) {
   clean.completedSteps = reconcileCompletions(profile, clean.access, clean.completedSteps);
   return clean;
 }
+
+// A linked Slack request takes precedence over a manual record for that entitlement.
+export function accessProgress(profile,access,requests=[]){
+ const total=profile.access.length;
+ const verified=profile.access.filter(item=>{const r=requests.find(x=>x.profileId===profile.id&&x.accessId===item.id);return r?r.status==='verified':access[item.id]?.status==='verified';}).length;
+ return {verified,total,percent:total?Math.round(verified/total*100):0};
+}
