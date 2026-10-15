@@ -174,3 +174,12 @@ Linked planners resolve the static recipe from the hire’s persisted profile ID
 
 
 UI spacing update: the planner uses a separate top navigation row and the selected hire as the page heading; profile hints explain assigned/locked recipes. The portal keeps Refresh and its load feedback in one compact toolbar, removes the duplicate personal-view list heading, and groups hire identity/date and Slack access progress with consistent spacing. Shared progress headings style only the percentage as a large number. No workflow, provider or persistence contracts change.
+
+
+Dealertrack sent Slack requests now offer an explicit browser-only Demo continuation: fictional approval, then fictional verification. A separate demo progress bar and setup dependency/completion preview never update real Slack requests, SQLite summaries, actual access, saved setup completion, or workstation reports. Reset per request, exit the preview, or reload to discard it. CMS does not use this continuation.
+
+Demo continuation also updates the access card’s primary badge to Demo · approved / Demo · verified, while the adjacent note retains the real Slack status. Reset restores the live badge.
+
+Completed Dealertrack access cards collapse into an expandable summary, retaining their original order. The next unfinished card is highlighted; demo verification moves focus there. Expanding a completed card retains its Slack details and preview reset control.
+
+While demo continuation is active, the main access readiness bar and total show the preview, explicitly labelled Demo. Its detail retains the real verified count. Exiting or resetting restores actual progress; the portal summary remains real-only.

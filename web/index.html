@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onboarding workspace</title><link rel="stylesheet" href="/style.css?v=ui-spacing-7"><link rel="stylesheet" href="/request-queue.css?v=ui-spacing-7"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onboarding workspace</title><link rel="stylesheet" href="/style.css?v=demo-continuation-4"><link rel="stylesheet" href="/request-queue.css?v=demo-continuation-4"></head>
 <body>
   <header><div class="brand">TEAM<span> / </span>ONBOARDING</div><div class="badge">DEVELOPER WORKSPACE</div></header>
   <main>
@@ -15,10 +15,11 @@
       <p class="fine">Saved only in this browser on this local origin. Don’t enter passwords or tokens. Switching hires: clear this plan first.</p><button id="clear" class="text-button">Clear saved plan and imported report</button>
     </section>
     <nav aria-label="Onboarding sections"><button data-tab="access" class="selected">Access requests</button><button data-tab="machine">Workstation checks</button><button data-tab="steps">Setup journey</button></nav>
+    <section id="demo-continuation-banner" class="access-progress panel demo-continuation" aria-label="Demo preview" hidden></section>
     <div id="message" role="status" aria-live="polite"></div>
     <section id="access" class="tab"><div class="section-title"><div><h2>Every permission, accounted for.</h2><p>One request per access. Track the ticket and verify access after approval.</p></div><span id="access-count" class="badge"></span></div><div class="access-progress panel"><div class="progress-heading"><label for="access-progress">Access readiness</label><strong id="access-progress-value">0%</strong></div><progress id="access-progress" max="100" value="0"></progress><p class="fine" id="access-progress-detail"></p></div><div id="slack-connection" role="status"></div><section id="request-queue" class="queue-section" aria-label="Mock access request queue"></section><div id="access-list"></div></section>
     <section id="machine" class="tab" hidden><div class="section-title"><div><h2>Inspect before installing.</h2><p>Local inventory checks do not establish full workstation readiness.</p></div></div><p id="inventory-unavailable" class="notice" hidden>No CMS inventory checker is implemented. Confirm the CMS workstation plan with your team in Setup journey. The Dealertrack checker and reports do not establish CMS readiness.</p><div id="inventory-controls" class="panel"><code>pwsh -NoProfile -File .\scripts\Test-OnboardingReadiness.ps1</code><p>Run from this project's folder in an approved PowerShell runtime, then import <code>reports/readiness.json</code>. Only the report is written.</p><div class="actions"><label class="file-button">Import report<input id="report-file" type="file" accept=".json,application/json"></label></div></div><div id="report-list"><p class="empty">No report loaded. Run the checker and import your report.</p></div></section>
-    <section id="steps" class="tab" hidden><div class="section-title"><div><h2>Follow the dependencies.</h2><p>Completion is recorded manually. This page cannot run the setup script.</p></div></div><div id="step-list"></div></section>
+    <section id="steps" class="tab" hidden><div class="section-title"><div><h2>Follow the dependencies.</h2><p>Completion is recorded manually. This page cannot run the setup script.</p></div></div><p id="setup-demo-notice" class="notice" hidden>Demo setup preview · dependency unlocks and completion are fictional and are not saved to your real setup journey.</p><div id="step-list"></div></section>
     <footer>Hackathon 26 · Automate Onboarding for NewHires <span id="profile-sources"></span></footer>
-  </main><script type="module" src="/app.mjs?v=ui-spacing-7"></script>
+  </main><script type="module" src="/app.mjs?v=demo-continuation-4"></script>
 </body></html>

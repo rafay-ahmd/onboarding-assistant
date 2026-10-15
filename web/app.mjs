@@ -1,7 +1,7 @@
 import {mountLiveRequests} from './live-requests.mjs';
 import {accessCardStatus} from './request-queue.mjs';
 import {createRequestQueue} from './request-queue-ui.mjs';
-import {accessProgress,accessStatuses,draftRequest,dependencyStatus,reconcileCompletions,validateReport,validateTicketUrl,normalizeState,planStorageKey,resolvePlannerProfile} from './model.mjs';
+import {demoAccessPreview,accessProgress,accessStatuses,draftRequest,dependencyStatus,reconcileCompletions,validateReport,validateTicketUrl,normalizeState,planStorageKey,resolvePlannerProfile} from './model.mjs';
 const catalog = await fetch('/profiles.json').then(r => {if(!r.ok) throw Error('Profile catalog unavailable'); return r.json();});
 const hireId=new URL(location.href).searchParams.get('hireId');
 let actorId='';try{actorId=sessionStorage.getItem('onboarding-demo-actor')||'';}catch{}
@@ -44,6 +44,7 @@ if(profile.confirmedRequirements?.length){$('profile-confirmations').hidden=fals
 $('profile-sources').innerHTML='<details><summary>Profile source documents</summary><ul>'+profile.sources.map(url=>`<li><a href="${esc(url)}" target="_blank" rel="noopener">${esc(new URL(url).pathname.split('/').filter(Boolean).slice(-2).join(' / ').replaceAll('-',' ').replaceAll('+',' '))}</a>${profile.sourceDocuments?.find(doc=>doc.url===url)?.status?` — ${esc(profile.sourceDocuments.find(doc=>doc.url===url).status)}`:''}</li>`).join('')+(profile.additionalReferences||[]).map(ref=>`<li><a href="${esc(ref.url)}" target="_blank" rel="noopener">${esc(ref.title)}</a> — ${esc(ref.reviewStatus)}</li>`).join('')+'</ul></details>';
 let liveRequests=null;
 let linkedRequests=[];
+let demoStages=Object.create(null),demoCompleted=null;
 const requestQueue=localDraft?createRequestQueue({profile,container:$('request-queue'),notify:message,onChange:syncQueueCards}):null;
 function syncQueueCards(requests=[]){
   if(!localDraft){updateAccessProgress(linkedRequests);liveRequests?.render();return;}
@@ -92,9 +93,85 @@ function renderAccess(){
   }).join('');
   syncQueueCards(requestQueue?.getRequests()||[]);
 }
+function preview(){return demoAccessPreview(profile,state.access,linkedRequests,demoStages);}
+function renderDemo(requests=linkedRequests){
+ if(localDraft)return;
+ linkedRequests=requests;
+ const view=preview();
+ const actual=accessProgress(profile,state.access,requests),shown=view.active?view.progress:actual;
+ $('access-count').textContent=shown.verified+' / '+shown.total+(view.active?' DEMO VERIFIED':' ACCESS VERIFIED');
+ document.querySelector('label[for="access-progress"]').textContent=view.active?'Demo access readiness':'Access readiness';
+ $('access-progress-value').textContent=shown.percent+'%';
+ $('access-progress').value=shown.percent;
+ $('access-progress').setAttribute('aria-valuetext',shown.verified+' of '+shown.total+(view.active?' permissions complete in demo preview':' permissions verified'));
+ $('access-progress-detail').textContent=view.active?shown.verified+' of '+shown.total+' complete in demo preview. Real access: '+actual.verified+' of '+actual.total+' verified ('+actual.percent+'%).':actual.verified+' of '+actual.total+' permissions verified. Completed means you have checked that access works.';
+ if(!view.active)demoCompleted=null;
+ const banner=$('demo-continuation-banner');banner.hidden=!view.active;
+ if(view.active){
+  const {verified,total}=view.progress;
+  banner.innerHTML=`<h3>Demo preview active</h3><p>${verified} / ${total} complete in this preview. Approvals and verification below are fictional. Real Slack records and dashboard progress are unchanged.</p><p>Setup journey is also in preview mode. Changes last until you reset or reload this page.</p><button class="secondary" id="reset-demo-continuation">Exit demo preview</button>`;
+  $('reset-demo-continuation').addEventListener('click',()=>{demoStages=Object.create(null);demoCompleted=null;renderDemo();message('Demo preview cleared. Real records are unchanged.');});
+ }
+ for(const slot of $('access-list').querySelectorAll('[data-live-slot]')){
+  slot.querySelector('[data-demo-continuation]')?.remove();
+  const r=requests.find(r=>r.profileId===profile.id&&r.accessId===slot.dataset.liveSlot);
+  if(!canEditPlan||!r?.receipt||r.status==='verified')continue;
+  const stage=demoStages[r.id];
+  const card=slot.closest('[data-access]'),badge=card.querySelector('[data-access-status]');
+  badge.textContent=stage?'Demo · '+(stage==='approved'?'approved':'verified'):r.status.replaceAll('-',' ');
+  badge.className='status '+(stage==='approved'?'granted':stage==='verified'?'verified':r.status);
+  badge.setAttribute('aria-live','polite');
+  card.querySelector('[data-status-source]').textContent=stage?'Demo preview only. Real Slack status: '+r.status.replaceAll('-',' ')+'.':'Updated from your Slack request.';
+ 
+  const section=document.createElement('section');section.className='demo-continuation';section.dataset.demoContinuation=r.id;
+  section.innerHTML=`<h4>Demo continuation</h4><p class="fine">Preview the steps after Slack delivery without a helpdesk response.</p>${stage?`<p role="status"><strong>${stage==='approved'?'Demo approval received':'Demo verification complete'}</strong></p><p>Fictional helpdesk response: Access approved for this demonstration. No ticket or permission was created.</p>`:''}<div class="actions">${!stage?'<button type="button" class="secondary" data-demo-action="approve">Demo: show approval received</button>':stage==='approved'?'<button type="button" data-demo-action="verify">Demo: complete verification</button>':'<span class="status verified">Demo · complete</span>'}${stage?'<button type="button" class="secondary" data-demo-action="reset">Reset this preview</button>':''}</div>`;
+  slot.append(section);
+ }
+ updateCompletedCards();
+ renderSteps();
+}
+function updateCompletedCards(){
+ const cards=[...$('access-list').querySelectorAll('[data-access]')];
+ let nextFound=false;
+ for(const card of cards){
+  const id=card.dataset.access,r=linkedRequests.find(r=>r.profileId===profile.id&&r.accessId===id);
+  const done=r?(r.status==='verified'||demoStages[r.id]==='verified'):state.access[id]?.status==='verified';
+  let body=card.querySelector('[data-access-body]');
+  if(!body){body=document.createElement('div');body.dataset.accessBody='';for(const child of [...card.children].slice(1))body.append(child);card.append(body);}
+  let toggle=card.querySelector('[data-completed-toggle]');
+  if(done&&!toggle){toggle=document.createElement('button');toggle.type='button';toggle.className='secondary completed-toggle';toggle.dataset.completedToggle='';body.before(toggle);}
+  if(done){
+   if(card.dataset.completed!=='true')body.hidden=true;
+   toggle.textContent=body.hidden?'Completed · show details':'Hide completed details';toggle.setAttribute('aria-expanded',String(!body.hidden));
+  }else{toggle?.remove();body.hidden=false;}
+  card.dataset.completed=String(done);card.classList.toggle('completed-access',done);
+  const next=!done&&!nextFound;if(next)nextFound=true;
+  card.classList.toggle('next-access',next);
+  card.querySelector('[data-next-access]')?.remove();
+  if(next){const hint=document.createElement('p');hint.className='fine next-access-label';hint.dataset.nextAccess='';hint.textContent='Next access request';card.prepend(hint);}
+ }
+}
+$('access-list').addEventListener('click',e=>{
+ const toggle=e.target.closest('[data-completed-toggle]');
+ if(toggle){const body=toggle.closest('[data-access]').querySelector('[data-access-body]');body.hidden=!body.hidden;toggle.textContent=body.hidden?'Completed · show details':'Hide completed details';toggle.setAttribute('aria-expanded',String(!body.hidden));return;}
+ const button=e.target.closest('[data-demo-action]');if(!button||!canEditPlan)return;
+ const id=button.closest('[data-demo-continuation]').dataset.demoContinuation;
+ const r=linkedRequests.find(r=>r.id===id&&r.profileId===profile.id&&r.receipt&&r.status!=='verified');if(!r)return;
+ const action=button.dataset.demoAction;
+ if(action==='reset')delete demoStages[id];
+ else if(action==='approve'&&!demoStages[id]){demoCompleted??=[...state.completedSteps];demoStages[id]='approved';}
+ else if(action==='verify'&&demoStages[id]==='approved')demoStages[id]='verified';
+ renderDemo();message('Demo preview updated. Nothing was sent or recorded as real access.');
+ if(action==='verify'){const next=$('access-list').querySelector('.next-access');if(next){const heading=next.querySelector('h3');heading.tabIndex=-1;heading.focus({preventScroll:true});next.scrollIntoView({behavior:'smooth',block:'center'});}}
+});
 function renderSteps(){
+  const view=preview(),stepAccess=view.active?view.access:state.access;
+  const completed=view.active?reconcileCompletions(profile,stepAccess,demoCompleted||state.completedSteps):state.completedSteps;
+  if(view.active)demoCompleted=completed;
+  $('setup-demo-notice').hidden=!view.active;
+
   const name=id=>profile.access.find(x=>x.id===id)?.name||profile.steps.find(x=>x.id===id)?.name||id;
-  $('step-list').innerHTML=profile.steps.map(s=>{const pending=dependencyStatus(s,state.access,state.completedSteps),done=state.completedSteps.includes(s.id);return `<article class="card"><div class="card-top"><h3>${esc(s.name)}</h3><span class="status ${done?'verified':pending.length?'blocked':'unverified'}">${done?'Recorded complete':pending.length?'Dependencies pending':'Ready to review'}</span></div><span class="tag">${esc(s.mode)}</span><p>${esc(s.action)}</p><p><strong>Verify:</strong> ${esc(s.verification)}</p>${pending.length?`<p><strong>Waiting for:</strong> ${esc(pending.map(name).join(', '))}</p>`:''}<button class="secondary step-button" data-step="${esc(s.id)}" ${pending.length&&!done?'disabled':''}>${done?'Undo recorded completion':'Record completion manually'}</button></article>`;}).join('');
+  $('step-list').innerHTML=profile.steps.map(s=>{const pending=dependencyStatus(s,stepAccess,completed),done=completed.includes(s.id);return `<article class="card"><div class="card-top"><h3>${esc(s.name)}</h3><span class="status ${done?'verified':pending.length?'blocked':'unverified'}">${view.active?'Demo · ':''}${done?'Recorded complete':pending.length?'Dependencies pending':'Ready to review'}</span></div><span class="tag">${esc(s.mode)}</span><p>${esc(s.action)}</p><p><strong>Verify:</strong> ${esc(s.verification)}</p>${pending.length?`<p><strong>Waiting for:</strong> ${esc(pending.map(name).join(', '))}</p>`:''}<button class="secondary step-button" data-step="${esc(s.id)}" ${pending.length&&!done?'disabled':''}>${view.active?(done?'Undo demo completion':'Record demo completion'):(done?'Undo recorded completion':'Record completion manually')}</button></article>`;}).join('');
 }
 function renderReport(){if(!report){$('report-list').innerHTML='<p class="empty">No report loaded. Run the checker and import your report.</p>';return;}
   const counts={};for(const c of report.checks)counts[c.status]=(counts[c.status]||0)+1;
@@ -104,7 +181,7 @@ function render(){renderAccess();renderSteps();if(!canEditPlan)for(const control
 fillForm();render();
 if(hireId){$('planner-context').hidden=false;$('planner-context-title').textContent=hireContext?hireContext.name+'’s onboarding':'Onboarding unavailable';$('planner-context-detail').textContent=contextError||'Track your access, check your workstation, and follow your team’s setup steps.';}
 if(contextError){$('slack-connection').textContent=contextError;for(const button of document.querySelectorAll('[data-review-request]'))button.disabled=true;}
-if(!localDraft&&!contextError)liveRequests=mountLiveRequests({apiBase:hireId?'/api/hires/'+encodeURIComponent(hireId)+'/slack/':'/api/slack/',actorId,container:$('slack-connection'),cards:$('access-list'),profile,notify:message,onRequestsChange:updateAccessProgress,onVerified:r=>{
+if(!localDraft&&!contextError)liveRequests=mountLiveRequests({apiBase:hireId?'/api/hires/'+encodeURIComponent(hireId)+'/slack/':'/api/slack/',actorId,onRender:renderDemo,container:$('slack-connection'),cards:$('access-list'),profile,notify:message,onRequestsChange:updateAccessProgress,onVerified:r=>{
   if(canEditPlan && r.profileId===profile.id && state.access[r.accessId]){
     state.access[r.accessId].status='verified';persist();render();
   }
@@ -115,7 +192,7 @@ $('hire-form').addEventListener('submit',e=>e.preventDefault());
 document.querySelector('nav').addEventListener('click',e=>{const tab=e.target.dataset.tab;if(!tab)return;document.querySelectorAll('.tab').forEach(x=>x.hidden=x.id!==tab);document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('selected',x.dataset.tab===tab));message('');});
 $('access-list').addEventListener('change',e=>{const statusId=e.target.dataset.status,ticketId=e.target.dataset.ticket;if(!canEditPlan)return;if(statusId){state.access[statusId].status=e.target.value;persist();render();}if(ticketId){try{state.access[ticketId].ticket=validateTicketUrl(e.target.value);persist();renderAccess();message('Ticket link saved locally. Status is updated manually.');}catch(err){message(err.message);e.target.value=state.access[ticketId].ticket;}}});
 $('access-list').addEventListener('click',async e=>{const reviewId=e.target.dataset.reviewRequest;if(reviewId){if(!canEditPlan)return;if(localDraft)requestQueue.openReview(profile.access.find(x=>x.id===reviewId),state.hire);else liveRequests.openReview(profile.access.find(x=>x.id===reviewId));return;}const id=e.target.dataset.copy;if(!id)return;const draft=draftRequest(profile.access.find(x=>x.id===id),state.hire,profile);try{await navigator.clipboard.writeText(draft.text);message('Draft copied. Review and submit it yourself; nothing was sent.');}catch{message('Clipboard unavailable. Select and copy the draft text.');}});
-$('step-list').addEventListener('click',e=>{const id=e.target.dataset.step;if(!id||!canEditPlan)return;const step=profile.steps.find(s=>s.id===id);if(state.completedSteps.includes(id)){const remove=new Set([id]);let changed=true;while(changed){changed=false;for(const s of profile.steps)if(!remove.has(s.id)&&s.dependsOn.some(d=>remove.has(d))){remove.add(s.id);changed=true;}}state.completedSteps=state.completedSteps.filter(x=>!remove.has(x));}else if(!dependencyStatus(step,state.access,state.completedSteps).length)state.completedSteps.push(id);persist();renderSteps();});
+$('step-list').addEventListener('click',e=>{const id=e.target.dataset.step;if(!id||!canEditPlan)return;const step=profile.steps.find(s=>s.id===id);const view=preview();if(view.active){let completed=demoCompleted||[...state.completedSteps];if(completed.includes(id))completed=completed.filter(x=>x!==id);else if(!dependencyStatus(step,view.access,completed).length)completed.push(id);demoCompleted=reconcileCompletions(profile,view.access,completed);renderSteps();return;}if(state.completedSteps.includes(id)){const remove=new Set([id]);let changed=true;while(changed){changed=false;for(const s of profile.steps)if(!remove.has(s.id)&&s.dependsOn.some(d=>remove.has(d))){remove.add(s.id);changed=true;}}state.completedSteps=state.completedSteps.filter(x=>!remove.has(x));}else if(!dependencyStatus(step,state.access,state.completedSteps).length)state.completedSteps.push(id);persist();renderSteps();});
 $('demo').addEventListener('click',()=>{if(!canEditPlan)return;if(!confirm('Replace this browser’s saved plan with a fictional demo hire?'))return;state=normalizeState({hire:{name:'Alex Example',email:'alex@example.invalid',manager:'Taylor Example',githubUsername:'alex-example',awsGroup:profile.id==='dealertrack-developer'?'TR-RO-AWS-DEALERTRACK-DEV':''}},profile);persist();fillForm();render();message(profile.id==='cms-developer'?'Fictional CMS demo loaded. Repository details and subteam-specific AWS groups are left blank until confirmed.':'Fictional demo loaded. The example AWS group still requires EM confirmation.');});
 $('clear').addEventListener('click',()=>{if(!canEditPlan)return;if(!confirm('Clear this browser’s saved plan and imported report?'))return;state=normalizeState({},profile);report=null;persist();fillForm();render();renderReport();$('report-file').value='';message('Local plan cleared. No tickets or machine configuration were changed.');});
 $('report-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file||!canEditPlan)return;try{if(file.size>1024*1024)throw Error('Report must be under 1 MB.');const candidate=validateReport(JSON.parse(await file.text()),profile.id);report=candidate;renderReport();message('Report imported. Request status and setup completion remain separate.');}catch(err){message(err.message);}});

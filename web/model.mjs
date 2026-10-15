@@ -71,3 +71,13 @@ export function resolvePlannerProfile(catalog,requestedProfile,hireProfileId){
  if(!catalog.some(p=>p.id===id))throw Error(hireProfileId?'This managed profile has no workstation/access template mapped yet. Return to the dashboard.':'Unknown onboarding profile.');
  return id;
 }
+
+// Preview values never replace real access or linked Slack records.
+export function demoAccessPreview(profile,access,requests,stages){
+ const eligible=requests.filter(r=>r.profileId===profile.id&&r.receipt&&r.status!=='verified'&&['approved','verified'].includes(stages[r.id]));
+ const previewAccess=structuredClone(access);
+ const verified=new Set(eligible.filter(r=>stages[r.id]==='verified').map(r=>r.id));
+ for(const r of eligible)if(verified.has(r.id)&&previewAccess[r.accessId])previewAccess[r.accessId].status='verified';
+ const previewRequests=requests.map(r=>verified.has(r.id)?{...r,status:'verified'}:{...r});
+ return {active:eligible.length>0,access:previewAccess,progress:accessProgress(profile,previewAccess,previewRequests)};
+}

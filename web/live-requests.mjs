@@ -1,5 +1,5 @@
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function mountLiveRequests({container,cards,profile,notify,onVerified=()=>{},onRequestsChange=()=>{},apiBase='/api/slack/',actorId=''}){
+export function mountLiveRequests({container,cards,profile,notify,onVerified=()=>{},onRequestsChange=()=>{},onRender=()=>{},apiBase='/api/slack/',actorId=''}){
   let connection=null,requests=[],busy=false;
   let modalRules=[];
   const dialog=document.createElement('dialog');dialog.className='request-review';dialog.setAttribute('aria-label','Review access request');document.body.append(dialog);
@@ -24,6 +24,7 @@ export function mountLiveRequests({container,cards,profile,notify,onVerified=()=
     if(review){review.disabled=busy||!connection?.connected||!!r;review.hidden=!!r;}
     if(r){badge.textContent=r.status.replaceAll('-',' ');badge.className='status '+r.status;card.querySelector('[data-status-source]').textContent='Updated from your Slack request.';card.querySelector('[data-manual-record]').open=false;}
   }
+  onRender(requests);
 }
   async function handleClick(e){const button=e.target.closest('button');if(!button||button.disabled||busy)return;
     if(button.hasAttribute('data-live-refresh')){try{busy=true;render();await refresh();}catch(err){connection={connected:false,error:err.message};notify(err.message);}finally{busy=false;render();}return;}
