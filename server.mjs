@@ -1,3 +1,4 @@
+import {seedSlackDemoAccount} from './backend/services/slack-demo-account.mjs';
 import {createLiveApi} from './server/live-api.mjs';
 import http from "node:http";
 import { readFile } from "node:fs/promises";
@@ -36,15 +37,16 @@ const types = {
   json: "application/json",
 };
 
-export function createApp({ databasePath = fileURLToPath(new URL('./data/onboarding.sqlite', root)), seed = true, workflows } = {}) {
+export function createApp({ databasePath = process.env.ONBOARDING_DATABASE_PATH || fileURLToPath(new URL('./data/onboarding.sqlite', root)), seed = true, workflows, slackCall, seedSlackAccount = true } = {}) {
   const store = openStore(databasePath);
   if (seed) seedDemo(store);
   const platform = createPlatform(store, workflows ? { workflows } : {});
+  if (seed && seedSlackAccount) seedSlackDemoAccount(store,platform);
   const api = apiRouter(platform);
-  const liveApi = createLiveApi(root);
+  const liveApi = createLiveApi(root,{platform,store,slackCall});
   const server = http.createServer(async (req, res) => {
     const requestUrl = new URL(req.url, "http://127.0.0.1");
-    if (requestUrl.pathname.startsWith("/api/slack/") && await (await liveApi)(req, res, requestUrl)) return;
+    if ((requestUrl.pathname.startsWith("/api/slack/") || /^\/api\/hires\/[^/]+\/slack\//.test(requestUrl.pathname)) && await (await liveApi)(req, res, requestUrl)) return;
     if (await api(req, res)) return;
     if (req.method !== "GET") {
       res.writeHead(405);

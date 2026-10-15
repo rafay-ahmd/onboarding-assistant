@@ -1,3 +1,4 @@
+import {slackAccessSummary} from './slack-request-store.mjs';
 import { randomUUID } from 'node:crypto';
 import { requireValue } from './errors.mjs';
 import { demoWorkflows } from './demo-workflows.mjs';
@@ -60,14 +61,16 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
     const account = store.get('accounts', hire.id);
     const requests = store.list('requests', { hireId: hire.id });
     const assignments = store.list('assignments', { hireId: hire.id });
+    const accessSummary=slackAccessSummary(store,hire.id);
     const blockers = [];
     if (!account) blockers.push('Network team must record AD ID, work email and laptop ID.');
     if (requests.some(r => r.kind === 'account' && r.status !== 'completed')) blockers.push('Account-creation request is pending.');
     if (!assignments.length) blockers.push('Group provisioning has not been started.');
     for (const a of assignments.filter(a => a.status !== 'succeeded')) blockers.push(`${a.group}: ${a.status}${a.error ? ` — ${a.error}` : ''}`);
     if (hire.adminRequired && !requests.some(r => r.kind === 'admin')) blockers.push('Admin access request has not been queued.');
-    for (const r of requests.filter(r => r.kind !== 'account' && r.status !== 'verified')) blockers.push(`${r.kind} access: ${r.status}`);
-    return { ...hire, account, requests, assignments, events: store.list('events', { hireId: hire.id }), blockers,
+    for (const r of requests.filter(r => r.provider !== 'slack' && r.kind !== 'account' && r.status !== 'verified')) blockers.push(`${r.kind} access: ${r.status}`);
+    if(accessSummary.started)for(const item of accessSummary.items.filter(x=>x.status!=='verified'))blockers.push(item.name+': '+item.status.replaceAll('-',' '));
+    return { ...hire, account, requests, assignments, accessSummary, events: store.list('events', { hireId: hire.id }), blockers,
       simulation: true, workflowImplementation: workflows.name || 'injected-workflow', realReadiness: 'Not assessed by this portal' };
   }
   function mutate(actorId, operation, key, body, action) {
@@ -199,6 +202,7 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
         const resource = store.get(type, resourceId);
         requireValue(resource, 404, 'NOT_FOUND', 'Resource not found.');
         hireFor(acting, resource.hireId); network(acting);
+        requireValue(resource.provider!=='slack',409,'LIVE_REQUEST_ACTION_REQUIRED','Use the linked Slack workflow to update this request.');
         const updated = type === 'assignments' ? workflows.assignmentAction({ assignment: resource, body }) : workflows.requestAction({ request: resource, body });
         store.put(type, { ...updated, updatedAt: now() });
         event(acting, resource.hireId, `${type}-${body.action}`, resource.id);

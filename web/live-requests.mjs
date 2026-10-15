@@ -1,5 +1,5 @@
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function mountLiveRequests({container,cards,profile,notify,onVerified=()=>{},onRequestsChange=()=>{}}){
+export function mountLiveRequests({container,cards,profile,notify,onVerified=()=>{},onRequestsChange=()=>{},apiBase='/api/slack/',actorId=''}){
   let connection=null,requests=[],busy=false;
   let modalRules=[];
   const dialog=document.createElement('dialog');dialog.className='request-review';dialog.setAttribute('aria-label','Review access request');document.body.append(dialog);
@@ -8,7 +8,7 @@ export function mountLiveRequests({container,cards,profile,notify,onVerified=()=
   const validText=(selector,min,max)=>{const value=dialog.querySelector(selector).value;return value.trim().length>=min&&value.length<=max;};
   dialog.addEventListener('input',syncModal);
   dialog.addEventListener('change',syncModal);
-  async function api(path,body){const res=await fetch('/api/slack/'+path,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json','X-Onboarding-CSRF':connection?.csrf||''}:{},...(body?{body:JSON.stringify(body)}:{})});const data=await res.json();if(!res.ok)throw Error(data.error==='thread_not_found'?'This Slack thread is no longer available. Open the saved thread link to check whether it was deleted or your access changed.':data.error||'Request failed');return data;}
+  async function api(path,body){const res=await fetch(apiBase+path,{method:body?'POST':'GET',headers:{...(actorId?{'X-Demo-Actor-Id':actorId}:{}),...(body?{'Content-Type':'application/json','X-Onboarding-CSRF':connection?.csrf||''}:{})},...(body?{body:JSON.stringify(body)}:{})});const data=await res.json();if(!res.ok)throw Error(data.error==='thread_not_found'?'This Slack thread is no longer available. Open the saved thread link to check whether it was deleted or your access changed.':data.error||'Request failed');return data;}
   async function refresh(){connection=await api('status');if(connection.connected){requests=(await api('requests')).requests;}render();}
   function render(){
   container.innerHTML=`<p><strong>Slack:</strong> ${connection?.connected?esc(connection.user)+' · '+esc(connection.team)+' · #'+esc(connection.channelName):esc(connection?.error||'Connecting…')} <button class="secondary" data-live-refresh ${busy?'disabled':''}>Refresh connection</button></p><p class="fine">Requests are sent as the connected Slack account. Review each message before sending.</p>`;
