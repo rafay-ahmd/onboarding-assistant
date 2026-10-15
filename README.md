@@ -20,6 +20,12 @@ Open the profile circle at the top right to switch fictional accounts. The selec
 
 Demo roles: **Alex Example is the EM; Vibgy Joseph is the Toronto new hire**. Startup updates the original fictional seed labels without deleting onboarding progress. The legacy EM actor ID remains `em-vibgy` for API compatibility; resolve its displayed name through actor discovery.
 
+For the presentation, UI actions use normal product wording (Provision access, Create ticket, Grant access) and omit “mock” badges. These still execute only the local simulations described above; provider flags and real-access verification remain separate.
+
+Account saves require valid unsaved edits; reverting the fields disables Save again. New-hire creation requires a completed valid form, and replies require nonempty text. Successful saves reset the form's change baseline; failed saves preserve edits for retry. The local planner continues to autosave its fields.
+
+Provision access queues group assignments and any required admin request. Once queued, the button reads Access queued and is disabled; pending groups read Awaiting assignment. The current temporary workflow advances through the network team's Mark assigned/Record failure actions, rather than a background directory worker.
+
 Share the committed seed code and migrations, not `data/onboarding.sqlite`. Each contributor runs `npm start` to create the same fictional starting accounts in their own local DB. Changes made in one developer's DB are not synced to others; a single shared server/database would be needed for everyone to see the same live edits.
 
 ### Existing local planner

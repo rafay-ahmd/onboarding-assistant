@@ -15,6 +15,10 @@ Track A now adds a shared SQLite portal at `/`, using Node 24+ built-in SQLite a
 
 The portal now collects `firstName` and `lastName` separately, preserving `name` as the joined display field. Name-only API callers and historical records remain compatible; never infer name parts from existing display names. Demo switching lives in the top-right profile circle, with a tab-local saved account and role-specific workspace copy/layout. Keep explicit simulation labels on provider outcomes.
 
+User-directed presentation update: visible UI now uses product wording instead of “mock”/“simulate” labels (for example Provision access, Create ticket, Grant access). This supersedes earlier instructions to label every outcome Mock. The footer identifies the hackathon demo; implementation/provider flags, storage keys, API semantics and actual-access/setup isolation are unchanged. Do not turn these wording changes into live integrations.
+
+Portal submit buttons require changed, valid form values and remain disabled during commands. Account baselines reset when persisted details render; failed saves retain the edits. Creation resets to its empty baseline after success/account switching. The planner still autosaves; queue replies require nonblank text and review confirmation requires a valid justification.
+
 - A buildless browser dashboard served by a small Node.js HTTP server on loopback, port 4173 by default.
 - A single draft Dealertrack developer profile: access requirements, routing, required fields, setup steps and dependencies.
 - A shared new-hire details form. It fills request drafts; it is not an EM login or workflow trigger.

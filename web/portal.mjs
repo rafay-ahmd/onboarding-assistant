@@ -1,10 +1,41 @@
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Small, local SVG set: decorative icons always accompany visible text.
+const iconPaths = {
+  attention: '<path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v4m0 4h.01"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+  device: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/>',
+  groups: '<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3m1-16a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5v1"/>',
+  key: '<circle cx="8" cy="9" r="5"/><path d="m12 13 8 8m-4-4 3-3m-6 0 3-3"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  refresh: '<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12-1l2 6M4 12l2 6a7 7 0 0 0 12-1"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  ticket: '<path d="M3 5h18v5a2 2 0 0 0 0 4v5H3v-5a2 2 0 0 0 0-4V5Z"/><path d="M15 5v3m0 3v2m0 3v3"/>',
+  close: '<path d="m6 6 12 12M6 18 18 6"/>'
+};
+const icon = name => `<svg class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${iconPaths[name]}</svg>`;
+$('refresh').insertAdjacentHTML('afterbegin', icon('refresh'));
+$('create-form').querySelector('button[type="submit"]').insertAdjacentHTML('afterbegin', icon('plus'));
 let actors = [], actorId = '', selectedId = '', hires = [], nextOffset = null, version = 0;
 let busy = false;
+const formBaselines = new WeakMap();
+const formValues = form => JSON.stringify([...new FormData(form)]);
+function canSubmit(form) {
+  return !busy && formValues(form) !== formBaselines.get(form) && form.checkValidity();
+}
+function syncForm(form) {
+  form.querySelector('button[type="submit"], button:not([type])').disabled = !canSubmit(form);
+}
+function trackForm(form) {
+  formBaselines.set(form, formValues(form));
+  form.addEventListener('input', () => syncForm(form));
+  form.addEventListener('change', () => syncForm(form));
+  syncForm(form);
+}
+trackForm($('create-form'));
 try { actorId = sessionStorage.getItem('onboarding-demo-actor') || ''; } catch { /* Selection still works without browser storage. */ }
 const pendingCommands = new Map();
-function feedback(message, error = false) { $('feedback').textContent = message; $('feedback').dataset.error = String(error); }
+function feedback(message, error = false) { $('feedback').textContent = String(message).replace(/\bmock\s*/gi, ''); $('feedback').dataset.error = String(error); }
 async function api(path, method = 'GET', body) {
   const headers = { 'X-Demo-Actor-Id': actorId };
   let pendingKey;
@@ -69,35 +100,43 @@ async function refresh({ more = false } = {}) {
   if (selectedId) await loadDetail(selectedId);
   else $('detail').innerHTML = '<p>No onboarding plan to display.</p>';
 }
-function actionButton(type, resource, action, label) { return `<button class="secondary" data-kind="${type}" data-resource="${esc(resource)}" data-action="${action}">${label}</button>`; }
+function actionButton(type, resource, action, label) { return `<button class="secondary" data-kind="${type}" data-resource="${esc(resource)}" data-action="${action}">${icon(({ success: 'check', failure: 'attention', retry: 'refresh', ticket: 'ticket', grant: 'key', deny: 'close', verify: 'check' })[action])}${label}</button>`; }
 async function loadDetail(hireId) {
   const token = version;
   const d = await api(`/api/hires/${hireId}`);
   if (token !== version || selectedId !== hireId) return;
   const network = currentActor().role === 'network';
+  const provisioningQueued = d.requestedGroups.every(group => d.assignments.some(a => a.group === group))
+    && (!d.adminRequired || d.requests.some(r => r.kind === 'admin'));
+  const groupStatus = status => ({ pending: 'Awaiting assignment', succeeded: 'Assigned', failed: 'Assignment failed' })[status] || status;
   $('detail').innerHTML = `<p class="eyebrow">${esc(d.location)} · Dealertrack developer</p><h2>${esc(d.name)}</h2><p>Starts ${esc(d.startDate)}</p>
-    <span class="badge">SIMULATED ACCESS</span>
-    <h3>${d.blockers.length ? 'What needs attention' : 'Onboarding plan complete'}</h3>
-    ${d.blockers.length ? `<ul>${d.blockers.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : '<p>All simulated onboarding steps are complete. Actual access remains unverified.</p>'}
-    <h3>Account & device</h3>
-    ${network ? `<form id="account-form" data-hire-id="${esc(d.id)}"><div class="account-grid"><label>AD ID<input name="adId" required maxlength="300" value="${esc(d.account?.adId)}"></label><label>Work email<input name="workEmail" type="email" required maxlength="300" value="${esc(d.account?.workEmail)}"></label><label>Laptop ID<input name="laptopId" required maxlength="300" value="${esc(d.account?.laptopId)}"></label></div><div class="actions"><button>Save account details</button></div></form><div class="actions"><button data-provision="${esc(d.id)}" ${d.account ? '' : 'disabled'}>Queue mock provisioning</button></div>` : `<dl><dt>AD ID</dt><dd>${esc(d.account?.adId || 'Awaiting network team')}</dd><dt>Work email</dt><dd>${esc(d.account?.workEmail || 'Not recorded')}</dd><dt>Laptop ID</dt><dd>${esc(d.account?.laptopId || 'Not recorded')}</dd></dl>`}
-    <h3>Requested groups</h3><ul>${d.requestedGroups.map(g => `<li>${esc(g)}</li>`).join('')}</ul>
-    ${d.assignments.map(a => `<div class="resource"><strong>${esc(a.group)}</strong><p>Mock · ${esc(a.status)} · ${a.attempts} attempt(s)</p>${a.error ? `<p>${esc(a.error)}</p>` : ''}${network ? `<div class="actions">${a.status === 'pending' ? actionButton('assignments', a.id, 'success', 'Simulate success') + actionButton('assignments', a.id, 'failure', 'Simulate failure') : a.status === 'failed' ? actionButton('assignments', a.id, 'retry', 'Retry failed group') : ''}</div>` : ''}</div>`).join('')}
-    <h3>Access requests</h3>${d.requests.map(r => `<div class="resource"><strong>${esc(r.kind)} request</strong><p>Mock · ${esc(r.status)}${r.ticket ? ` · ${esc(r.ticket.key)}` : ''}</p>${r.kind === 'admin' ? '<p>Dedicated-form route; separate from Slack.</p>' : ''}${network ? `<div class="actions">${r.status === 'pending' ? actionButton('requests', r.id, 'ticket', 'Create fictional ticket') : r.kind === 'admin' && r.status === 'ticket-created' ? actionButton('requests', r.id, 'grant', 'Simulate grant') + actionButton('requests', r.id, 'deny', 'Simulate denial') : r.kind === 'admin' && r.status === 'granted' ? actionButton('requests', r.id, 'verify', 'Simulate verification') : ''}</div>` : ''}</div>`).join('')}
-    <h3>Recent activity</h3><ul>${d.events.map(e => `<li>${esc(e.type.replaceAll('-', ' '))} · ${esc(new Date(e.createdAt).toLocaleString())}</li>`).join('')}</ul>
+    <span class="badge">ONBOARDING PROGRESS</span>
+    <section class="attention-box ${d.blockers.length ? '' : 'complete'}" aria-labelledby="attention-title">
+      ${icon(d.blockers.length ? 'attention' : 'check')}
+      <div><h3 id="attention-title">${d.blockers.length ? 'What needs attention' : 'Onboarding plan complete'}</h3>
+      ${d.blockers.length ? `<ul>${d.blockers.map(b => `<li>${esc(d.assignments.some(a => a.status === 'pending' && b === `${a.group}: pending`) ? b.replace(/: pending$/, ': awaiting assignment') : b.replace(/Simulated /g, ""))}</li>`).join('')}</ul>` : '<p>Your onboarding plan is complete.</p>'}</div>
+    </section>
+    <h3 class="icon-heading">${icon('device')}Account & device</h3>
+    ${network ? `<form id="account-form" data-hire-id="${esc(d.id)}"><div class="account-grid"><label>AD ID<input name="adId" required maxlength="300" value="${esc(d.account?.adId)}"></label><label>Work email<input name="workEmail" type="email" required maxlength="300" value="${esc(d.account?.workEmail)}"></label><label>Laptop ID<input name="laptopId" required maxlength="300" value="${esc(d.account?.laptopId)}"></label></div><div class="actions"><button>Save account details</button></div></form><div class="actions"><button data-provision="${esc(d.id)}" ${!d.account || provisioningQueued ? 'disabled' : ''}>${icon('key')}${provisioningQueued ? 'Access queued' : 'Provision access'}</button></div><p class="fine">${!d.account ? 'Save account details before provisioning access.' : provisioningQueued ? 'Access work is queued. Resolve each group below; repeated provisioning will not create duplicates.' : 'Queue the requested group assignments and any required admin access.'}</p>` : `<dl><dt>AD ID</dt><dd>${esc(d.account?.adId || 'Awaiting network team')}</dd><dt>Work email</dt><dd>${esc(d.account?.workEmail || 'Not recorded')}</dd><dt>Laptop ID</dt><dd>${esc(d.account?.laptopId || 'Not recorded')}</dd></dl>`}
+    <h3 class="icon-heading">${icon('groups')}Requested groups</h3><ul>${d.requestedGroups.map(g => `<li>${esc(g)}</li>`).join('')}</ul>
+    ${d.assignments.map(a => `<div class="resource"><strong>${esc(a.group)}</strong><p>${esc(groupStatus(a.status))} · ${a.attempts} attempt(s)</p>${a.status === 'pending' ? `<p class="fine">${network ? 'Choose Mark assigned once group membership is confirmed, or Record failure if it could not be assigned.' : 'The network team is preparing this group membership.'}</p>` : ''}${a.error ? `<p>${esc(a.error.replace(/^Simulated /, ""))}</p>` : ''}${network ? `<div class="actions">${a.status === 'pending' ? actionButton('assignments', a.id, 'success', 'Mark assigned') + actionButton('assignments', a.id, 'failure', 'Record failure') : a.status === 'failed' ? actionButton('assignments', a.id, 'retry', 'Retry failed group') : ''}</div>` : ''}</div>`).join('')}
+    <h3 class="icon-heading">${icon('key')}Access requests</h3>${d.requests.map(r => `<div class="resource"><strong>${esc(r.kind)} request</strong><p>${esc(r.status)}${r.ticket ? ` · ${esc(r.ticket.key)}` : ''}</p>${r.kind === 'admin' ? '<p>Dedicated-form route; separate from Slack.</p>' : ''}${network ? `<div class="actions">${r.status === 'pending' ? actionButton('requests', r.id, 'ticket', 'Create ticket') : r.kind === 'admin' && r.status === 'ticket-created' ? actionButton('requests', r.id, 'grant', 'Grant access') + actionButton('requests', r.id, 'deny', 'Decline request') : r.kind === 'admin' && r.status === 'granted' ? actionButton('requests', r.id, 'verify', 'Verify access') : ''}</div>` : ''}</div>`).join('')}
+    <h3 class="icon-heading">${icon('clock')}Recent activity</h3><ul>${d.events.map(e => `<li>${esc(e.type.replaceAll('-', ' '))} · ${esc(new Date(e.createdAt).toLocaleString())}</li>`).join('')}</ul>
     <p class="fine">Real workstation readiness: ${esc(d.realReadiness)}.</p>`;
+  if ($('account-form')) trackForm($('account-form'));
 }
 async function run(action) {
   if (busy) return;
   busy = true;
   $('refresh').disabled = true;
   document.querySelectorAll('button').forEach(b => { if (!b.disabled) { b.dataset.pending = 'true'; b.disabled = true; } });
-  try { await action(); feedback('Up to date.'); }
+  try { const result = await action(); feedback(result || 'Up to date.'); }
   catch (error) { feedback(error.message, true); }
   finally {
     busy = false; $('refresh').disabled = false;
     document.querySelectorAll('[data-pending]').forEach(b => { b.disabled = false; delete b.dataset.pending; });
     renderProfile();
+    for (const form of document.querySelectorAll('#create-form, #account-form')) syncForm(form);
   }
 }
 $('profile-accounts').addEventListener('click', event => {
@@ -125,6 +164,7 @@ $('hires').addEventListener('click', event => {
 });
 $('create-form').addEventListener('submit', event => {
   event.preventDefault();
+  if (!canSubmit(event.target)) return;
   const body = Object.fromEntries(new FormData(event.target));
   body.requestedGroups = body.requestedGroups.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   body.adminRequired = body.adminRequired === 'true';
@@ -136,12 +176,13 @@ $('create-form').addEventListener('submit', event => {
 $('detail').addEventListener('submit', event => {
   if (event.target.id !== 'account-form') return;
   event.preventDefault();
+  if (!canSubmit(event.target)) return;
   const body = Object.fromEntries(new FormData(event.target));
   run(async () => { await api(`/api/hires/${event.target.dataset.hireId}/account`, 'PUT', body); await refresh(); });
 });
 $('detail').addEventListener('click', event => {
   const button = event.target.closest('button');
-  if (button?.dataset.provision) run(async () => { await api(`/api/hires/${button.dataset.provision}/provision`, 'POST', {}); await refresh(); });
+  if (button?.dataset.provision) run(async () => { await api(`/api/hires/${button.dataset.provision}/provision`, 'POST', {}); await refresh(); return 'Access work queued. Resolve the group assignments below and follow any admin request.'; });
   else if (button?.dataset.action) run(async () => { await api(`/api/${button.dataset.kind}/${button.dataset.resource}/actions`, 'POST', { action: button.dataset.action }); await refresh(); });
 });
 try { await loadActors(); await refresh(); }

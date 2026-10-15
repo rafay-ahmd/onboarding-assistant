@@ -16,14 +16,14 @@ function syncQueueCards(requests){
     const id=badge.dataset.accessStatus;
     const actual=state.access[id].status;
     const display=accessCardStatus(requests,profile.id,state.hire.email,id,actual);
-    badge.textContent=display.label;
+    badge.textContent=display.status.replaceAll('-',' ');
     badge.className='status '+display.status;
-    badge.title=display.simulated?'Simulated queue progress. Actual access has not been changed.':'Actual access status, recorded manually.';
+    badge.title=display.simulated?'Request queue progress.':'Actual access status, recorded manually.';
     const card=badge.closest('[data-access]');
     const note=card.querySelector('[data-status-source]');
-    note.textContent=display.simulated?'Status updates automatically from the mock queue. No live access has been changed.':'Track this access manually until a request enters the queue.';
+    note.textContent=display.simulated?'Status updates automatically from the request queue.':'Track this access manually until a request enters the queue.';
     card.querySelector('[data-automatic-status]').hidden=!display.simulated;
-    card.querySelector('[data-automatic-value]').value=display.status.replaceAll('-',' ')+(display.simulated?' (simulation)':'');
+    card.querySelector('[data-automatic-value]').value=display.status.replaceAll('-',' ');
     const manual=card.querySelector('[data-manual-record]');
     const mode=display.simulated?'automatic':'manual';
     if(manual.dataset.mode!==mode){manual.open=!display.simulated;manual.dataset.mode=mode;}
@@ -31,7 +31,7 @@ function syncQueueCards(requests){
   }
   const actualCount=profile.access.filter(x=>state.access[x.id].status==='verified').length;
   const mockCount=requests.filter(r=>r.status==='verified').length;
-  $('access-count').textContent=mockCount+' MOCK VERIFIED · '+actualCount+' / '+profile.access.length+' REAL VERIFIED';
+  $('access-count').textContent=mockCount+' REQUESTS VERIFIED · '+actualCount+' / '+profile.access.length+' REAL VERIFIED';
 }
 function persist(){state.completedSteps=reconcileCompletions(profile,state.access,state.completedSteps);try{localStorage.setItem(storageKey,JSON.stringify(state));}catch{message('Browser storage is unavailable. Keep this page open; changes will not persist.');}}
 function fillForm(){for(const [key,value] of Object.entries(state.hire)) $('hire-form').elements[key].value=value;}
@@ -40,7 +40,7 @@ function renderAccess(){
   $('access-count').textContent=`${profile.access.filter(x=>state.access[x.id].status==='verified').length} / ${profile.access.length} ACCESS VERIFIED`;
   $('access-list').innerHTML=profile.access.map(item=>{
     const draft=draftRequest(item,state.hire), tracked=state.access[item.id];
-    return `<article class="card" data-access="${esc(item.id)}"><div class="card-top"><div><h3>${esc(item.name)}</h3><span class="tag">${esc(item.route==='helpdesk'?'Separate helpdesk message':item.route==='form'?'Dedicated service-desk form':'Confirm route with team')}${item.priority?' · '+esc(item.priority):''}</span></div><span data-access-status="${esc(item.id)}" class="status ${tracked.status}">${esc(tracked.status.replaceAll('-',' '))}</span></div><p class="fine" data-status-source></p><div data-automatic-status hidden><label>Request status (automatic)<input data-automatic-value readonly aria-label="${esc(item.name)} automatic request status"></label></div><p>${esc(item.reason)}</p><p class="fine">Basis: ${esc(item.evidence)}</p>${item.route==='helpdesk'?`<p><button class="secondary" data-review-request="${esc(item.id)}" ${draft.missing.length?'disabled':''}>Review mock request</button></p>`:''}${draft.missing.length?`<p>Complete: ${esc(draft.missing.join(', '))} to prepare this request.</p>`:`<details><summary>${item.route==='form'?'Information for your form':item.route==='team'?'Draft for the owner':'Helpdesk draft'}</summary><textarea aria-label="${esc(item.name)} request draft" readonly>${esc(draft.text)}</textarea><button data-copy="${esc(item.id)}" class="secondary">Copy draft</button></details>`}${item.url?`<p><a class="link-button" href="${esc(item.url)}" target="_blank" rel="noopener">Open required form</a></p>`:''}<details data-manual-record open><summary data-manual-summary>Manual access tracking</summary><div class="card-actions"><label>Actual access status (manual)<select data-status="${esc(item.id)}">${accessStatuses.map(s=>`<option value="${s}" ${s===tracked.status?'selected':''}>${s.replaceAll('-',' ')}</option>`).join('')}</select></label><label>Real helpdesk ticket link <span>Optional</span><input data-ticket="${esc(item.id)}" aria-label="Real helpdesk ticket link" type="url" placeholder="Paste an existing ticket URL" value="${esc(tracked.ticket)}"><span class="field-hint">Saved link only. Ticket status is not synced.</span></label>${tracked.ticket?`<a href="${esc(tracked.ticket)}" target="_blank" rel="noopener">View ticket ↗</a>`:''}</div></details></article>`;
+    return `<article class="card" data-access="${esc(item.id)}"><div class="card-top"><div><h3>${esc(item.name)}</h3><span class="tag">${esc(item.route==='helpdesk'?'Separate helpdesk message':item.route==='form'?'Dedicated service-desk form':'Confirm route with team')}${item.priority?' · '+esc(item.priority):''}</span></div><span data-access-status="${esc(item.id)}" class="status ${tracked.status}">${esc(tracked.status.replaceAll('-',' '))}</span></div><p class="fine" data-status-source></p><div data-automatic-status hidden><label>Request status (automatic)<input data-automatic-value readonly aria-label="${esc(item.name)} automatic request status"></label></div><p>${esc(item.reason)}</p><p class="fine">Basis: ${esc(item.evidence)}</p>${item.route==='helpdesk'?`<p><button class="secondary" data-review-request="${esc(item.id)}" ${draft.missing.length?'disabled':''}>Review request</button></p>`:''}${draft.missing.length?`<p>Complete: ${esc(draft.missing.join(', '))} to prepare this request.</p>`:`<details><summary>${item.route==='form'?'Information for your form':item.route==='team'?'Draft for the owner':'Helpdesk draft'}</summary><textarea aria-label="${esc(item.name)} request draft" readonly>${esc(draft.text)}</textarea><button data-copy="${esc(item.id)}" class="secondary">Copy draft</button></details>`}${item.url?`<p><a class="link-button" href="${esc(item.url)}" target="_blank" rel="noopener">Open required form</a></p>`:''}<details data-manual-record open><summary data-manual-summary>Manual access tracking</summary><div class="card-actions"><label>Actual access status (manual)<select data-status="${esc(item.id)}">${accessStatuses.map(s=>`<option value="${s}" ${s===tracked.status?'selected':''}>${s.replaceAll('-',' ')}</option>`).join('')}</select></label><label>Real helpdesk ticket link <span>Optional</span><input data-ticket="${esc(item.id)}" aria-label="Real helpdesk ticket link" type="url" placeholder="Paste an existing ticket URL" value="${esc(tracked.ticket)}"><span class="field-hint">Saved link only. Ticket status is not synced.</span></label>${tracked.ticket?`<a href="${esc(tracked.ticket)}" target="_blank" rel="noopener">View ticket ↗</a>`:''}</div></details></article>`;
   }).join('');
   syncQueueCards(requestQueue.getRequests());
 }
