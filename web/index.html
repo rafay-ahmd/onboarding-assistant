@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onboarding workspace</title><link rel="stylesheet" href="/style.css?v=profiles-rebase-1"><link rel="stylesheet" href="/request-queue.css?v=profiles-rebase-1"></head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Onboarding workspace</title><link rel="stylesheet" href="/style.css?v=ui-spacing-7"><link rel="stylesheet" href="/request-queue.css?v=ui-spacing-7"></head>
 <body>
   <header><div class="brand">TEAM<span> / </span>ONBOARDING</div><div class="badge">DEVELOPER WORKSPACE</div></header>
   <main>
-    <section class="intro"><p class="eyebrow">NEW HIRE → READY TO DEVELOP</p><h1>A clearer first day.</h1><p>Plan access, inspect the workstation, and see what needs attention—all in one place.</p></section>
-    <label>Onboarding profile<select id="profile-selector" aria-label="Onboarding profile"></select></label>
+    <div class="planner-navigation" role="navigation" aria-label="Workspace navigation"><a href="/">← Back to dashboard</a><a id="explore-profiles" href="/planner" hidden>Browse team guides →</a></div>
+    <section id="planner-context" class="intro"><p class="eyebrow">YOUR SETUP WORKSPACE</p><h1 id="planner-context-title">A clearer first day.</h1><p id="planner-context-detail">Plan access, inspect the workstation, and see what needs attention—all in one place.</p></section>
+    <div class="planner-profile-row"><label>Onboarding profile<select id="profile-selector" aria-label="Onboarding profile" aria-describedby="profile-hint"></select></label><p class="fine" id="profile-hint">Choose the setup guide for your team.</p></div>
     <div class="notice" id="profile-notice">Loading draft profile…</div>
     <section id="profile-confirmations" class="panel" hidden aria-label="Confirmed profile requirements"></section>
     <section id="profile-questions" class="panel" hidden aria-label="Requirements awaiting EM confirmation"></section>
@@ -19,5 +20,5 @@
     <section id="machine" class="tab" hidden><div class="section-title"><div><h2>Inspect before installing.</h2><p>Local inventory checks do not establish full workstation readiness.</p></div></div><p id="inventory-unavailable" class="notice" hidden>No CMS inventory checker is implemented. Confirm the CMS workstation plan with your team in Setup journey. The Dealertrack checker and reports do not establish CMS readiness.</p><div id="inventory-controls" class="panel"><code>pwsh -NoProfile -File .\scripts\Test-OnboardingReadiness.ps1</code><p>Run from this project's folder in an approved PowerShell runtime, then import <code>reports/readiness.json</code>. Only the report is written.</p><div class="actions"><label class="file-button">Import report<input id="report-file" type="file" accept=".json,application/json"></label></div></div><div id="report-list"><p class="empty">No report loaded. Run the checker and import your report.</p></div></section>
     <section id="steps" class="tab" hidden><div class="section-title"><div><h2>Follow the dependencies.</h2><p>Completion is recorded manually. This page cannot run the setup script.</p></div></div><div id="step-list"></div></section>
     <footer>Hackathon 26 · Automate Onboarding for NewHires <span id="profile-sources"></span></footer>
-  </main><script type="module" src="/app.mjs?v=profiles-rebase-1"></script>
+  </main><script type="module" src="/app.mjs?v=ui-spacing-7"></script>
 </body></html>

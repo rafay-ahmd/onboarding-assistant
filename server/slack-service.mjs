@@ -35,7 +35,7 @@ export function summarizeThread(messages,parentTs,actorId='') {
   const latestAnswer=[...replies].reverse().find(m=>m.user===actorId);
   return {replies,ticketKeys:tickets,question:latestHelpdesk?.text.includes('?')&&(!latestAnswer||Number(latestHelpdesk.ts)>Number(latestAnswer.ts))?latestHelpdesk.text:null};
 }
-export function createSlackService({call,store,profile,channelId='C0111SZ86CE',expectedTeamId='TT299RP8X',expectedUserId,actorEmail='',now=()=>new Date().toISOString()}) {
+export function createSlackService({call,store,profile,channelId='C0111SZ86CE',expectedTeamId='TT299RP8X',expectedUserId,actorEmail='',scopeId='',now=()=>new Date().toISOString()}) {
   let cached;
   async function connection(){
     if(cached&&cached.until>Date.now())return cached.value;
@@ -58,7 +58,7 @@ export function createSlackService({call,store,profile,channelId='C0111SZ86CE',e
     if(item.id==='github'&&!String(githubUsername).trim())throw new SlackError('github_username_required');
     if(item.id==='aws'&&!String(awsGroup).trim())throw new SlackError('aws_group_required');
     if([githubUsername,awsGroup].some(v=>typeof v!=='string'||v.length>200))throw new SlackError('invalid_request_details');
-    const key=JSON.stringify([c.teamId,c.userId,profile.id,item.id]);
+    const key=JSON.stringify([c.teamId,c.userId,profile.id,item.id,...(scopeId?[scopeId]:[])]);
     return store.transaction(rows=>{
       const existing=rows.find(r=>r.key===key);if(existing)return {request:existing,duplicate:true};
       const text=`<!subteam^S010NGQMLLT> Hi, could I please get ${item.name}?\n\nRequester: <@${c.userId}>\nRole: Dealertrack software developer\nBusiness justification: ${reason}${item.id==='github'?'\nGitHub username: '+githubUsername.trim():''}${item.id==='aws'?'\nRequested Okta group (confirmed with EM): '+awsGroup.trim():''}\n\nThis is one individual access request.`;

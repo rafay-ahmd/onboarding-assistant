@@ -151,3 +151,26 @@ The current screen is single-operator. Explicitly verified own Slack records upd
 ## CMS integration with the portal and Slack planner
 
 CMS profile selection is available at `/planner?profile=cms-developer`; `/` remains the existing SQLite role-based portal. The platform API supports EM-managed profiles, but this static CMS planner template is not automatically registered in its SQLite catalogue. The live Slack backend remains Dealertrack-specific. CMS does not mount the live Slack client, make `/api/slack/` requests, or import portal/Slack identities into its form. Switching back to Dealertrack restores its connected-account request dialogs, readiness bar, admin Slack route and report import, without showing the CMS form or local queue. Historical mock modules remain fixtures for Dealertrack and supply CMS’s local draft simulation only.
+
+
+## Hire-linked Slack workflow (October 15, 2026)
+
+The portal link now opens `/planner?hireId=<immutable-id>` using the tab’s selected demo actor. Scoped `/api/hires/:id/slack/{status,requests,requests/:id/action}` endpoints use the existing platform role/scope checks and the platform SQLite requests repository. Live mutations additionally require the self-only hire actor and an explicit stored Slack team/user binding; names or email matching never establish the binding. EM/network actors see the derived shared Slack access summary through the normal hire detail API, but cannot impersonate the hire to submit through their current role. Demo actor switching remains deliberately impersonatable, not SSO.
+
+An additional seeded Rafay Ahmed demo hire is bound explicitly to workspace TT299RP8X / user U0BUMD5CNP9. Its start date and requested directory group are fictional demo requirements. No token is stored in source or SQLite. Vibgy and other hires are not bound to this Slack account; their live submission is disabled. Using another person’s Slack identity requires their authorization. No real send is performed by seeding or loading the page.
+
+The adapter stores provider=slack, kind=entitlement records under each hire, with short SQLite transactions and an in-flight checkpoint before external sends. Generic simulated provider actions reject Slack records. Portal summaries count the profile’s helpdesk-routed permissions; the planner’s broader total also includes manual/team-owned permissions. Both display explicit verified counts. Network provisioning stubs and account/device progress remain separate. The existing simulated admin workflow is not converted into a real Slack send.
+
+Legacy standalone `/planner` JSON requests remain available and are not silently imported into a hire. Browser-local manual statuses, setup notes and imported reports are isolated under a hire-specific key; they are not yet shared workstation state in SQLite. Backend Slack verification is reflected in that hire’s local setup dependencies. The profile-based dashboard must use hire IDs, not a global localStorage plan or email.
+
+`ONBOARDING_DATABASE_PATH` optionally selects a SQLite file for an isolated demo server. Default storage remains data/onboarding.sqlite. `createApp({slackCall})` is a no-network test seam. Provisioning workflow hooks remain synchronous; external Slack IO runs in its separate async service adapter.
+
+
+## PR #4 and hire-linked Slack integration
+
+Integrated main 99847b8 with the saved hire-linked Slack changes. Preserve schema v3, EM-managed profile defaults, location group snapshots and the standalone CMS recipe/local queue. CMS does not mount the Dealertrack Slack service or accept Dealertrack inventory. The portal’s managed profiles and the static recipe catalog are distinct: unmapped managed profiles do not receive a guessed Dealertrack template or Slack summary.
+
+Linked planners resolve the static recipe from the hire’s persisted profile ID, lock the selector and isolate local notes by hire ID and profile; they do not let a query parameter switch a Dealertrack hire into CMS. Unmapped managed profiles show an explicit unavailable-template message. Standalone CMS retains its existing profile-specific storage and local draft flow. Dealertrack retains the prior hire-local storage keys and connected-account guards. No CMS request is submitted through the Dealertrack Slack namespace.
+
+
+UI spacing update: the planner uses a separate top navigation row and the selected hire as the page heading; profile hints explain assigned/locked recipes. The portal keeps Refresh and its load feedback in one compact toolbar, removes the duplicate personal-view list heading, and groups hire identity/date and Slack access progress with consistent spacing. Shared progress headings style only the percentage as a large number. No workflow, provider or persistence contracts change.

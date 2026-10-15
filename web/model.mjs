@@ -1,6 +1,7 @@
 export const accessStatuses = ['not-requested', 'requested', 'granted', 'verified', 'blocked'];
 export const checkStatuses = ['ready', 'missing', 'blocked', 'unverified'];
-export function planStorageKey(profileId) {
+export function planStorageKey(profileId,hireId) {
+  if(hireId)return 'dt-onboarding-hire-v1:'+hireId+(profileId==='dealertrack-developer'?'':':'+profileId);
   return profileId === 'dealertrack-developer' ? 'dt-onboarding-v1' : `onboarding-plan-${profileId}-v1`;
 }
 export function draftRequest(item, hire, profile = {}) {
@@ -62,4 +63,11 @@ export function accessProgress(profile,access,requests=[]){
  const total=profile.access.length;
  const verified=profile.access.filter(item=>{const r=requests.find(x=>x.profileId===profile.id&&x.accessId===item.id);return r?r.status==='verified':access[item.id]?.status==='verified';}).length;
  return {verified,total,percent:total?Math.round(verified/total*100):0};
+}
+
+// A hire selects its recipe through its saved profile, not a mutable URL parameter.
+export function resolvePlannerProfile(catalog,requestedProfile,hireProfileId){
+ const id=hireProfileId||requestedProfile||'dealertrack-developer';
+ if(!catalog.some(p=>p.id===id))throw Error(hireProfileId?'This managed profile has no workstation/access template mapped yet. Return to the dashboard.':'Unknown onboarding profile.');
+ return id;
 }

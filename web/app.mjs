@@ -1,13 +1,19 @@
 import {mountLiveRequests} from './live-requests.mjs';
 import {accessCardStatus} from './request-queue.mjs';
 import {createRequestQueue} from './request-queue-ui.mjs';
-import {accessProgress,accessStatuses,draftRequest,dependencyStatus,reconcileCompletions,validateReport,validateTicketUrl,normalizeState,planStorageKey} from './model.mjs';
+import {accessProgress,accessStatuses,draftRequest,dependencyStatus,reconcileCompletions,validateReport,validateTicketUrl,normalizeState,planStorageKey,resolvePlannerProfile} from './model.mjs';
 const catalog = await fetch('/profiles.json').then(r => {if(!r.ok) throw Error('Profile catalog unavailable'); return r.json();});
-const requestedProfile = new URL(location.href).searchParams.get('profile') || 'dealertrack-developer';
+const hireId=new URL(location.href).searchParams.get('hireId');
+let actorId='';try{actorId=sessionStorage.getItem('onboarding-demo-actor')||'';}catch{}
+let hireContext=null,contextError='';
+if(hireId){try{const response=await fetch('/api/hires/'+encodeURIComponent(hireId),{headers:{'X-Demo-Actor-Id':actorId}});const data=await response.json();if(!response.ok)throw Error(data.error?.message||'Hire unavailable');hireContext=data.data;}catch(err){contextError=err.message;}}
+const canEditPlan=!hireId||(!contextError&&actorId==='hire-'+hireId);
+let requestedProfile;
+try{requestedProfile=resolvePlannerProfile(catalog,new URL(location.href).searchParams.get('profile'),hireContext?.profileId);}catch(err){document.getElementById('profile-notice').textContent=err.message;throw err;}
 const selected = catalog.find(p=>p.id===requestedProfile);
 if(!selected){document.getElementById('profile-notice').innerHTML='Unknown onboarding profile. <a href="/planner">Return to the default profile</a>.';throw Error('Unknown onboarding profile.');}
 const profile = await fetch(selected.url).then(r => {if(!r.ok) throw Error('Profile unavailable'); return r.json();});
-const storageKey = planStorageKey(profile.id);
+const storageKey = planStorageKey(profile.id,hireId);
 let saved;
 try { saved = JSON.parse(localStorage.getItem(storageKey)); } catch {}
 let state = normalizeState(saved,profile);
@@ -17,6 +23,8 @@ const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 function message(text){$('message').textContent=text;}
 $('profile-selector').innerHTML=catalog.map(p=>`<option value="${esc(p.id)}" ${p.id===profile.id?'selected':''}>${esc(p.name)}</option>`).join('');
 $('profile-selector').addEventListener('change',e=>{const url=new URL(location.href);url.searchParams.set('profile',e.target.value);location.assign(url.href);});
+$('profile-selector').disabled=Boolean(hireId);
+if(hireId){$('profile-hint').textContent='Profile assigned by your engineering manager.';$('explore-profiles').hidden=false;}
 document.title=profile.name+' · Onboarding workspace';
 const localDraft=profile.id==='cms-developer';
 $('local-plan').hidden=!localDraft;
@@ -64,7 +72,7 @@ function syncQueueCards(requests=[]){
 function updateAccessProgress(requests){
  linkedRequests=requests;
  let changed=false;
- for(const r of (localDraft?[]:requests))if(r.profileId===profile.id&&r.status==='verified'&&state.access[r.accessId]&&state.access[r.accessId].status!=='verified'){state.access[r.accessId].status='verified';changed=true;}
+ for(const r of (localDraft?[]:requests))if(r.profileId===profile.id&&r.status==='verified'&&canEditPlan&&state.access[r.accessId]&&state.access[r.accessId].status!=='verified'){state.access[r.accessId].status='verified';changed=true;}
  if(changed){persist();renderSteps();}
  const {verified,total,percent}=accessProgress(profile,state.access,requests);
  if(!localDraft)$('access-count').textContent=verified+' / '+total+' ACCESS VERIFIED';
@@ -73,7 +81,7 @@ function updateAccessProgress(requests){
  $('access-progress').setAttribute('aria-valuetext',verified+' of '+total+' permissions verified');
  $('access-progress-detail').textContent=verified+' of '+total+' permissions verified. Completed means you have checked that access works.';
 }
-function persist(){state.completedSteps=reconcileCompletions(profile,state.access,state.completedSteps);try{localStorage.setItem(storageKey,JSON.stringify(state));}catch{message('Browser storage is unavailable. Keep this page open; changes will not persist.');}}
+function persist(){if(!canEditPlan)return;state.completedSteps=reconcileCompletions(profile,state.access,state.completedSteps);try{localStorage.setItem(storageKey,JSON.stringify(state));}catch{message('Browser storage is unavailable. Keep this page open; changes will not persist.');}}
 function fillForm(){for(const [key,value] of Object.entries(state.hire)) $('hire-form').elements[key].value=value;}
 function renderAccess(){
   requestQueue?.setHire(state.hire);
@@ -92,20 +100,22 @@ function renderReport(){if(!report){$('report-list').innerHTML='<p class="empty"
   const counts={};for(const c of report.checks)counts[c.status]=(counts[c.status]||0)+1;
   $('report-list').innerHTML=`<p class="fine">${report.demo?'FICTIONAL DEMO · ':''}Inspection time: ${esc(new Date(report.generatedAt).toLocaleString())}. Report import is not an independent verification of this machine.</p><div class="summary">${Object.entries(counts).map(([s,n])=>`<span class="status ${s}">${n} ${s}</span>`).join('')}</div>${report.checks.map(c=>`<article class="card check"><div><h3>${esc(c.name)}</h3><p>${esc(c.detail)}</p></div><span class="status ${c.status}">${c.status}</span></article>`).join('')}`;
 }
-function render(){renderAccess();renderSteps();}
+function render(){renderAccess();renderSteps();if(!canEditPlan)for(const control of document.querySelectorAll('[data-status],[data-ticket],[data-step],#report-file,#hire-form input'))control.disabled=true;}
 fillForm();render();
-if(!localDraft)liveRequests=mountLiveRequests({container:$('slack-connection'),cards:$('access-list'),profile,notify:message,onRequestsChange:updateAccessProgress,onVerified:r=>{
-  if(r.profileId===profile.id && state.access[r.accessId]){
+if(hireId){$('planner-context').hidden=false;$('planner-context-title').textContent=hireContext?hireContext.name+'’s onboarding':'Onboarding unavailable';$('planner-context-detail').textContent=contextError||'Track your access, check your workstation, and follow your team’s setup steps.';}
+if(contextError){$('slack-connection').textContent=contextError;for(const button of document.querySelectorAll('[data-review-request]'))button.disabled=true;}
+if(!localDraft&&!contextError)liveRequests=mountLiveRequests({apiBase:hireId?'/api/hires/'+encodeURIComponent(hireId)+'/slack/':'/api/slack/',actorId,container:$('slack-connection'),cards:$('access-list'),profile,notify:message,onRequestsChange:updateAccessProgress,onVerified:r=>{
+  if(canEditPlan && r.profileId===profile.id && state.access[r.accessId]){
     state.access[r.accessId].status='verified';persist();render();
   }
 }});
 
-$('hire-form').addEventListener('input',e=>{state.hire[e.target.name]=e.target.value;persist();render();});
+$('hire-form').addEventListener('input',e=>{if(!canEditPlan)return;state.hire[e.target.name]=e.target.value;persist();render();});
 $('hire-form').addEventListener('submit',e=>e.preventDefault());
 document.querySelector('nav').addEventListener('click',e=>{const tab=e.target.dataset.tab;if(!tab)return;document.querySelectorAll('.tab').forEach(x=>x.hidden=x.id!==tab);document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('selected',x.dataset.tab===tab));message('');});
-$('access-list').addEventListener('change',e=>{const statusId=e.target.dataset.status,ticketId=e.target.dataset.ticket;if(statusId){state.access[statusId].status=e.target.value;persist();render();}if(ticketId){try{state.access[ticketId].ticket=validateTicketUrl(e.target.value);persist();renderAccess();message('Ticket link saved locally. Status is updated manually.');}catch(err){message(err.message);e.target.value=state.access[ticketId].ticket;}}});
-$('access-list').addEventListener('click',async e=>{const reviewId=e.target.dataset.reviewRequest;if(reviewId){if(localDraft)requestQueue.openReview(profile.access.find(x=>x.id===reviewId),state.hire);else liveRequests.openReview(profile.access.find(x=>x.id===reviewId));return;}const id=e.target.dataset.copy;if(!id)return;const draft=draftRequest(profile.access.find(x=>x.id===id),state.hire,profile);try{await navigator.clipboard.writeText(draft.text);message('Draft copied. Review and submit it yourself; nothing was sent.');}catch{message('Clipboard unavailable. Select and copy the draft text.');}});
-$('step-list').addEventListener('click',e=>{const id=e.target.dataset.step;if(!id)return;const step=profile.steps.find(s=>s.id===id);if(state.completedSteps.includes(id)){const remove=new Set([id]);let changed=true;while(changed){changed=false;for(const s of profile.steps)if(!remove.has(s.id)&&s.dependsOn.some(d=>remove.has(d))){remove.add(s.id);changed=true;}}state.completedSteps=state.completedSteps.filter(x=>!remove.has(x));}else if(!dependencyStatus(step,state.access,state.completedSteps).length)state.completedSteps.push(id);persist();renderSteps();});
-$('demo').addEventListener('click',()=>{if(!confirm('Replace this browser’s saved plan with a fictional demo hire?'))return;state=normalizeState({hire:{name:'Alex Example',email:'alex@example.invalid',manager:'Taylor Example',githubUsername:'alex-example',awsGroup:profile.id==='dealertrack-developer'?'TR-RO-AWS-DEALERTRACK-DEV':''}},profile);persist();fillForm();render();message(profile.id==='cms-developer'?'Fictional CMS demo loaded. Repository details and subteam-specific AWS groups are left blank until confirmed.':'Fictional demo loaded. The example AWS group still requires EM confirmation.');});
-$('clear').addEventListener('click',()=>{if(!confirm('Clear this browser’s saved plan and imported report?'))return;state=normalizeState({},profile);report=null;persist();fillForm();render();renderReport();$('report-file').value='';message('Local plan cleared. No tickets or machine configuration were changed.');});
-$('report-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>1024*1024)throw Error('Report must be under 1 MB.');const candidate=validateReport(JSON.parse(await file.text()),profile.id);report=candidate;renderReport();message('Report imported. Request status and setup completion remain separate.');}catch(err){message(err.message);}});
+$('access-list').addEventListener('change',e=>{const statusId=e.target.dataset.status,ticketId=e.target.dataset.ticket;if(!canEditPlan)return;if(statusId){state.access[statusId].status=e.target.value;persist();render();}if(ticketId){try{state.access[ticketId].ticket=validateTicketUrl(e.target.value);persist();renderAccess();message('Ticket link saved locally. Status is updated manually.');}catch(err){message(err.message);e.target.value=state.access[ticketId].ticket;}}});
+$('access-list').addEventListener('click',async e=>{const reviewId=e.target.dataset.reviewRequest;if(reviewId){if(!canEditPlan)return;if(localDraft)requestQueue.openReview(profile.access.find(x=>x.id===reviewId),state.hire);else liveRequests.openReview(profile.access.find(x=>x.id===reviewId));return;}const id=e.target.dataset.copy;if(!id)return;const draft=draftRequest(profile.access.find(x=>x.id===id),state.hire,profile);try{await navigator.clipboard.writeText(draft.text);message('Draft copied. Review and submit it yourself; nothing was sent.');}catch{message('Clipboard unavailable. Select and copy the draft text.');}});
+$('step-list').addEventListener('click',e=>{const id=e.target.dataset.step;if(!id||!canEditPlan)return;const step=profile.steps.find(s=>s.id===id);if(state.completedSteps.includes(id)){const remove=new Set([id]);let changed=true;while(changed){changed=false;for(const s of profile.steps)if(!remove.has(s.id)&&s.dependsOn.some(d=>remove.has(d))){remove.add(s.id);changed=true;}}state.completedSteps=state.completedSteps.filter(x=>!remove.has(x));}else if(!dependencyStatus(step,state.access,state.completedSteps).length)state.completedSteps.push(id);persist();renderSteps();});
+$('demo').addEventListener('click',()=>{if(!canEditPlan)return;if(!confirm('Replace this browser’s saved plan with a fictional demo hire?'))return;state=normalizeState({hire:{name:'Alex Example',email:'alex@example.invalid',manager:'Taylor Example',githubUsername:'alex-example',awsGroup:profile.id==='dealertrack-developer'?'TR-RO-AWS-DEALERTRACK-DEV':''}},profile);persist();fillForm();render();message(profile.id==='cms-developer'?'Fictional CMS demo loaded. Repository details and subteam-specific AWS groups are left blank until confirmed.':'Fictional demo loaded. The example AWS group still requires EM confirmation.');});
+$('clear').addEventListener('click',()=>{if(!canEditPlan)return;if(!confirm('Clear this browser’s saved plan and imported report?'))return;state=normalizeState({},profile);report=null;persist();fillForm();render();renderReport();$('report-file').value='';message('Local plan cleared. No tickets or machine configuration were changed.');});
+$('report-file').addEventListener('change',async e=>{const file=e.target.files[0];if(!file||!canEditPlan)return;try{if(file.size>1024*1024)throw Error('Report must be under 1 MB.');const candidate=validateReport(JSON.parse(await file.text()),profile.id);report=candidate;renderReport();message('Report imported. Request status and setup completion remain separate.');}catch(err){message(err.message);}});
