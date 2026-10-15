@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>DT · Team onboarding</title><link rel="stylesheet" href="/style.css"><link rel="stylesheet" href="/portal.css"></head>
+<body>
+  <header><a class="brand" href="/">DT<span> / </span>ONBOARDING</a><div class="header-actions"><a id="planner-link" href="/planner">Access planner & workstation checks ↗</a><details id="profile-menu" class="profile-menu"><summary id="profile-toggle" aria-label="Open profile and switch account"><span id="profile-initials" class="avatar">…</span></summary><div class="profile-popover"><p class="eyebrow">SIGNED IN AS</p><strong id="profile-name"></strong><p id="profile-role"></p><hr><h2>Switch account</h2><p class="fine">Choose an account to open its workspace.</p><div id="profile-accounts" aria-label="Accounts"></div></div></details></div></header>
+  <main>
+    <section class="intro"><p id="intro-eyebrow" class="eyebrow">YOUR TEAM’S NEXT CHAPTER</p><h1 id="intro-title">A place to start.</h1><p id="intro-description">Loading your workspace…</p></section>
+    <div class="workspace-toolbar"><p id="scope"></p><button id="refresh" class="secondary">Refresh</button></div>
+    <div id="feedback" role="status" aria-live="polite"></div>
+    <section id="create-section" class="panel" hidden>
+      <div class="section-title"><div><p class="eyebrow">ENGINEERING MANAGER</p><h2>Welcome someone new.</h2></div></div>
+      <form id="create-form">
+        <div class="form-grid">
+          <label>First name<input name="firstName" autocomplete="given-name" required maxlength="300" placeholder="First name"></label>
+          <label>Last name<input name="lastName" autocomplete="family-name" required maxlength="300" placeholder="Last name"></label>
+          <label>Start date<input name="startDate" type="date" required></label>
+          <label>Location<select name="location"><option>Toronto</option><option>Berlin</option></select></label>
+          <label>Pre-account email <span>Optional</span><input name="email" type="email" maxlength="300" placeholder="May be added later"></label>
+          <label>Profile<select name="profileId"><option value="dealertrack-developer">Dealertrack developer (draft)</option></select></label>
+          <label>Admin access<select name="adminRequired"><option value="false">Not required</option><option value="true">Required</option></select></label>
+        </div>
+        <label>Requested AD groups <span>One per line; confirm with EM</span><textarea name="requestedGroups" required placeholder="Explicit group names"></textarea></label>
+        <button type="submit">Create onboarding plan</button>
+      </form>
+    </section>
+    <div class="section-title"><div><h2 id="list-title">Team onboarding</h2><p id="list-summary">Loading your plans…</p></div></div>
+    <div id="workspace" class="workspace"><section id="hire-sidebar" aria-label="Hires"><div id="hires"></div><button id="more" class="secondary" hidden>Load more hires</button></section><section id="detail" class="panel" aria-label="Selected hire"><p>Select a hire to view their plan.</p></section></div>
+    <footer>Onboarding workspace · Hackathon demo</footer>
+  </main>
+  <script type="module" src="/portal.mjs"></script>
+</body>
+</html>

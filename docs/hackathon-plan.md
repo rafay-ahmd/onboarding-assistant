@@ -2,6 +2,8 @@
 
 Date: October 15, 2026. Status: implementation plan; capabilities below are pending unless listed as existing.
 
+Track A has now been implemented; see the [implemented platform contract](#implemented-platform-contract-track-a) and [delivery evidence](#track-a-delivery-evidence). The original baseline and remaining B/C work below are retained for context.
+
 ## Goal and demo
 
 Deliver a local onboarding portal backed by SQLite, with mocked external services and an MCP interface. An engineering manager (EM) creates a hire; the network team records account/device details; the app tracks simulated provisioning and access requests. Both the dashboard and Codex use the same backend rules and data.
@@ -93,6 +95,8 @@ Responses: `{ data: ... }`; errors: `{ error: { code, message } }`. Use 400 for 
 
 Creating a hire only needs pre-account details; work email is not required yet. Existing entitlement drafting may still require work email. Block those requests with an explanatory blocker until the account is recorded. Never silently invent an email or group.
 
+Name-field update requested by Vibgy: the EM form requires separate `firstName` and `lastName`. New structured API payloads must provide both, with up to 300 characters each; whitespace is trimmed and `name` is derived for display. Legacy name-only callers and saved records remain supported without guessing name parts. Structured fields are also included in the account-request payload.
+
 ### Workflow boundaries
 
 - Hire creation stores a pending account request. An explicit mock ticket action gives it a `DEMO-` reference; no live URL.
@@ -107,12 +111,12 @@ Creating a hire only needs pre-account details; work email is not required yet. 
 
 ### A — platform and dashboards
 
-- [ ] Confirm a supported Node version and SQLite library/runtime with the team; document setup and commit the dependency lockfile if dependencies are added.
-- [ ] Add migrations, repositories, transactions and fictional seed/reset commands. Ignore DB files and sidecars; reset affects only this app's local demo database.
-- [ ] Implement actor resolution, role/location checks, service boundary and HTTP contract.
-- [ ] Build multi-hire EM create/list view, location-scoped network queue/account editor, and hire progress view.
-- [ ] Connect dashboard to API persistence. Keep existing browser-local data isolated; do not auto-import ambiguous records into shared hires.
-- [ ] Provide an early working API slice and fixtures to B/C. Add restart-persistence and authorization tests.
+- [x] Establish supported runtime: Node 24+ with built-in SQLite; document setup. No dependencies or lockfile needed.
+- [x] Add migrations, repositories, transactions and fictional seed/reset commands. Ignore DB files and sidecars; reset affects only this app's local demo database.
+- [x] Implement actor resolution, role/location checks, service boundary and HTTP contract.
+- [x] Build multi-hire EM create/list view, location-scoped network queue/account editor, and hire progress view.
+- [x] Connect dashboard to API persistence. Keep existing browser-local data isolated; do not auto-import ambiguous records into shared hires.
+- [x] Provide a working API slice, fictional seeds, payload examples and contract tests for B/C. Add restart-persistence and authorization tests.
 
 ### B — workflow and mocked services
 
@@ -158,3 +162,91 @@ Integrate at each gate rather than waiting for three completed branches. Cut Sla
 Baseline tests: `node --test tests/*.test.mjs`. If the local sandbox blocks test child processes, use `node --test --test-isolation=none tests/model.test.mjs tests/request-queue.test.mjs` on a Node version supporting that flag. New tests should be included in the normal test command as they are added.
 
 Each PR should state its track, contract changes, tests run and any remaining mock behavior. This plan authorizes no live service submissions and does not claim the pending features already exist.
+
+## Implemented platform contract (Track A)
+
+Approved clarifications from Vibgy: use fictional Toronto/Berlin locations; include clearly labelled temporary workflow stubs so the dashboard can be demonstrated before Rafay's integration.
+
+Runtime: Node 24+, built-in `node:sqlite`, no package dependencies. `npm start` runs the loopback server. SQLite schema v1 migrates on startup; `npm run seed` is non-destructive and idempotent. Stop the server before `npm run reset:demo`, which clears only this application's local demo tables and reseeds. DB files/sidecars under `data/` are ignored.
+
+### Sameer: HTTP integration
+
+Demo role update: Alex Example is now the EM and Vibgy Joseph the Toronto hire. The legacy actor ID `em-vibgy` is retained as an opaque identifier for compatibility. Use actor discovery for labels, not assumptions based on IDs. Startup/seed updates only the identified original fictional hire and EM labels, preserving IDs and workflow progress. Commit seeds/migrations to share the initial dataset; local DB edits do not sync through Git and SQLite files remain ignored.
+
+Use base URL `http://127.0.0.1:4173`. All successful operations currently return HTTP 200 with `{ "data": ... }`. Errors use the envelope defined above. Discover actors through `GET /api/demo/actors`; configure one actor per MCP session. Known seed IDs: `em-vibgy`, `em-other`, `network-toronto`, `network-berlin`. Each created hire gets a persistent self-only actor `hire-<hireId>`, also available from discovery. The demo actor discovery response is capped at 100 actors; this is intended for small local demos.
+
+Send `X-Demo-Actor-Id` for all other operations. Mutations require JSON content type and an explicit `Idempotency-Key` (1–200 characters). Retain the same key after an ambiguous response. Reusing a key with different data returns 409; replay returns the original saved response, not a fresh status snapshot. Follow with GET for current progress. HTTP clients without Origin are supported; browsers must use this portal's origin. No CORS access is enabled.
+
+| Route | Body / result |
+| --- | --- |
+| `GET /api/hires?offset=0` | `{ items: Hire[], nextOffset: number or null }`; 50 authorized hires/page |
+| `GET /api/hires/:id` | Hire plus `account`, `requests`, `assignments`, latest 100 `events` (newest first), `blockers`, `simulation`, `workflowImplementation`, `realReadiness` |
+| `POST /api/hires` | Create payload below; returns hire detail; EM becomes manager automatically |
+| `PUT /api/hires/:id/account` | `{ adId, workEmail, laptopId }`, all required; assigned network actor only; returns hire detail |
+| `POST /api/hires/:id/provision` | `{}`; requires account; creates missing pending groups and conditional admin request; returns hire detail |
+| `POST /api/assignments/:id/actions` | `{ action: "success" or "failure" or "retry" }`; network scope enforced; returns hire detail |
+| `POST /api/requests/:id/actions` | Stub account: `ticket` from pending; stub admin: `ticket`, then `grant` or `deny`, then `verify` after grant; network only; returns hire detail |
+| `POST /api/hires/:id/requests` | Reserved; returns `501 WORKFLOW_PENDING` after hire scope check. Rafay owns durable entitlement integration. |
+
+Create payload example (all values fictional):
+
+```json
+{
+  "firstName": "Taylor",
+  "lastName": "Example",
+  "email": "",
+  "startDate": "2026-11-03",
+  "location": "Toronto",
+  "profileId": "dealertrack-developer",
+  "requestedGroups": ["DEMO-DEVELOPERS"],
+  "adminRequired": true
+}
+```
+
+`email` is optional before account creation. `managerId` may be omitted or match the current EM. Start date must be a valid ISO calendar date. Groups must contain 1–30 explicit nonempty names; duplicate names are collapsed. `adminRequired` must be boolean. This platform slice does not yet support editing hire requirements after creation.
+
+Example account payload: `{ "adId": "DEMO-TAYLOR", "workEmail": "taylor@example.invalid", "laptopId": "DEMO-LT-001" }`.
+
+After provisioning starts, replacing the AD ID is rejected with `409 ACCOUNT_IN_USE` so successful group outcomes cannot be attributed to another AD identity. Work email and laptop corrections remain supported under the same hire ID.
+
+Creating a hire queues one pending account request. Explicit `ticket` creates a fictional reference; recording account details completes that account request even if no ticket was simulated. Provisioning is explicit, not automatic on save. It queues separate assignments/admin request. `success`/`failure` apply only to pending groups; `retry` changes failed groups back to pending. Successful groups are never requeued. This is temporary stub behavior, not the full provider lifecycle.
+
+EM sees own hires; network sees its location; hire sees self. Only network actors can mutate account/provisioning/provider outcomes. Unknown/missing actors return 403. GET for absent resources returns 404, and inaccessible existing resources return 403. These checks operate on demo identities, not authenticated people.
+
+### Rafay: replaceable workflow seam
+
+`createApp({ workflows })` injects workflows into `createPlatform(store, { workflows })`. The default is `backend/services/demo-workflows.mjs`, explicitly named `platform-stub`. Replace it through injection or change the default wiring in coordination with Vibgy; do not fork the DB or HTTP authorization layer.
+
+- `name`: identifier returned as `workflowImplementation`.
+- `provision({ store, hire, request, event, now, id })`: insert missing assignments through the store; use `request(kind, entitlementId, payload)` for deduplicated requests and `event(type, resourceId, detail)` for history.
+- `assignmentAction({ assignment, body })`: validate transition and return updated assignment.
+- `requestAction({ request, body })`: validate transition and return updated request.
+
+Hooks execute synchronously inside one SQLite transaction. Do not perform network IO or return promises from these hooks. Real asynchronous integration needs a queued worker boundary coordinated with Vibgy. Throws roll back mutations/events and leave the idempotency key reusable. Do not nest repository transactions.
+
+Store methods are `get(table,id)`, `list(table,{hireId,offset,limit})`, and `put(table,record)`. Requests require `id`, `hireId`, `requestKey`; assignments require `id`, `hireId`, `group`; events require `id`, `hireId`. Foreign keys bind child records to hires; uniqueness enforces request keys and hire/group pairs. The repository uses JSON bodies with indexed identity columns to leave provider payloads replaceable.
+
+Backend entitlement creation is intentionally pending. Reuse the existing queue's reviewed payload and transitions when implementing it. Its browser-local email identity must migrate explicitly to immutable hire IDs. Do not silently merge localStorage records or update actual access/setup states. The original planner remains at `/planner`, and its modules have not been rewritten by Track A.
+
+## Track A delivery evidence
+
+Implementation branch: `feat/platform-dashboards`.
+
+| Track A requirement | Observed evidence |
+| --- | --- |
+| SQLite, migrations, seed/reset, no committed DB | Built-in SQLite initializes schema v1; restart test reopens an actual temporary DB and compares account, requests, groups, events and idempotency receipt; ignored data directory |
+| Shared API and actor scope | HTTP test creates a hire as EM and lists it as the Toronto network client; service tests reject other EM, other location, hire writes and missing actor |
+| Durable identity and duplicate protection | Tests replay create with reordered payload, reject changed payload, deduplicate repeated provision, and preserve hire identity after account email change |
+| EM/network/hire dashboards | Browser created Casey Example; Toronto queue showed Alex/Casey and excluded Jamie; Berlin showed only Jamie; network saved account/device details, simulated ticket, group failure/retry/success and admin grant/verification; Alex's self-only view showed completion and actual-access disclaimer |
+| Atomic workflow integration | Injected failing workflow inserts a partial assignment then throws; test proves rollback and successful reuse of the same command key |
+| Existing planner isolation | Original model/queue tests retained; HTTP test verifies `/planner`; shared simulated results have no actual-access fields |
+
+Executed checks: `node --test --test-isolation=none tests/*.test.mjs` initially passed 20 tests. Final `node --test tests/*.test.mjs` passed all 22 tests with child-process access enabled; the default sandbox had blocked process spawning. Reset/reseed and successful-group isolation tests are included. SonarQube tooling is not available in this session. MCP client parity is pending Sameer's implementation; backend contract is exercised through HTTP tests.
+
+Deviation from initial plan: user-approved temporary account/group/admin workflow stubs are included. Rafay's full durable entitlement workflow and Sameer's MCP implementation remain their tracks.
+
+Browser reload after stopping/restarting the local server retained Casey, Alex's recorded account, successful group and admin ticket. Preview saved locally to Git-ignored `reports/platform-preview.png`. The portal uses explicit Refresh for cross-session changes; live push/polling is not implemented.
+
+Profile presentation update: a circular initials control at the top right opens the fictional account switcher, closes on outside click/Escape and remembers selection per browser tab. Main pages use role-specific headings and controls; the hire page has no team picker and the local planner link appears for hires. The footer and simulated resource labels retain demo context without the previous implementation-oriented banner.
+
+Verification for this update: all 23 tests passed with `node --test --test-isolation=none tests/*.test.mjs`. The added test checks structured compound names, required first/last fields, request payload fields and legacy compatibility. Browser created Samira de Silva from separate fields, switched through the profile menu to Berlin's network queue (no EM form), then to Samira's personal page (no team picker or account editor), and retained that profile after reload. Local preview: ignored `reports/profile-switcher.png`.
