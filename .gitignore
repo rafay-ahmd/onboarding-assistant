@@ -3,3 +3,7 @@ reports/*.png
 !reports/sample.json
 !reports/missing-prerequisites.json
 
+
+.env
+.env.*
+.local/

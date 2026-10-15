@@ -26,8 +26,8 @@ Read README.md, package.json, and relevant implementation files before changing 
 ## Not implemented yet
 
 - Authentication, multiple users, role-based authorization or location-based assignment.
-- Shared database or a multi-user backend. server.mjs currently serves a fixed list of static files and supports GET only.
-- Live Slack submission, real helpdesk ticket creation, automatic status retrieval, reminders or escalation. A mock queue is now implemented (see update below).
+- Shared database or a multi-user backend. The server includes the single-operator Slack API described below.
+- Background synchronization, direct helpdesk status APIs, reminders or escalation. Slack submission and explicit thread synchronization are implemented below.
 - Running workstation checks from the dashboard (currently run the script separately and import its JSON).
 - Automatic installations, builds, remote machine management or setup execution/resume.
 - An MCP server or direct Codex integration.
@@ -132,3 +132,21 @@ Access-card display synchronization: queue changes notify app.mjs, which project
 Queued access cards now use an automatic read-only status field; the unrelated manual real-access record is collapsed by default. Do not present a manual not-requested dropdown as the primary status of a completed mock request. Preserve manual data and real dependency isolation.
 
 Card styling uses shared typography, spacing, field heights and palette in web/style.css, with only queue/dialog-specific layout in request-queue.css. Request text uses the same sans-serif font as the dashboard; code commands alone use monospace. The optional real helpdesk ticket link is a bookmark only, with no status synchronization.
+
+## Direct Slack increment (October 15, 2026)
+
+The server now exposes a localhost-only /api/slack namespace through server/live-api.mjs and server/slack-service.mjs. web/live-requests.mjs manages the integrated access-card request flow. Credentials come from server environment; never expose or commit them. scripts/Start-WithSlack.ps1 supports a hidden token prompt. The connected Slack user is the requester; the fictional new-hire form cannot redirect real entitlements to another identity.
+
+Live requests require a reviewed confirmation, use one entitlement per request, persist idempotency and channel/thread references, checkpoint uncertain sends, and read thread replies/ticket references on explicit sync. Never infer verified access from resolved/approval text. The user explicitly confirms actual access works. Production multi-user authentication, cross-user delegation, background polling and service-desk status APIs remain pending. This namespace is a single-operator loopback demo with same-origin checks and per-process CSRF token, not production authorization.
+
+Coordinate these routes with the partner's identity/backend work rather than replacing them wholesale. Tests use mocked Slack responses; live testing must not create access requests without the user's specific instruction.
+
+
+## Integrated access flow (October 15, 2026)
+
+The product UI now uses real Slack requests directly on access cards: Review request → save draft → review and send → sync replies / reply → confirm access works. The standalone Live Slack requests panel and all simulation controls are removed from the interface. Existing simulated browser data is ignored; it is never migrated into real requests. Historical mock modules and tests remain development fixtures only. The connection bar identifies the authenticated requester independently of the onboarding form. No automatic grant or verification is inferred from Slack text. Admin rights retain the dedicated form. Reports come from the actual workstation checker; sample report buttons and fictional hire filling are removed.
+
+
+## Request review and readiness update
+
+The access tab shows a progress bar based on verified permissions, not messages sent or approvals. Linked Slack status takes precedence over a manual record. Full-message editing, save-draft and explicit send use a styled dialog; replies and actual verification also use dialogs. The server accepts draft edits only before delivery and sends the exact final reviewed text. No external request is created by preparing or saving a draft. See docs/page-flows.md for all page workflows.
