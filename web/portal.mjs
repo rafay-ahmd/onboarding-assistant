@@ -18,6 +18,7 @@ $('refresh').insertAdjacentHTML('afterbegin', icon('refresh'));
 $('create-form').querySelector('button[type="submit"]').insertAdjacentHTML('afterbegin', icon('plus'));
 let actors = [], actorId = '', selectedId = '', hires = [], nextOffset = null, version = 0;
 let busy = false;
+let onboardingProfiles = [], editingProfileId = '', editingRevision = null;
 const formBaselines = new WeakMap();
 const formValues = form => JSON.stringify([...new FormData(form)].map(([key, value]) => [key, typeof value === 'string' ? value.trim() : value]));
 function canSubmit(form) {
@@ -25,8 +26,7 @@ function canSubmit(form) {
   for (const field of form.querySelectorAll('input[type="email"]')) {
     field.setCustomValidity(field.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(field.value.trim()) ? 'Enter a valid email address.' : '');
   }
-  const groups = form.elements.requestedGroups;
-  if (groups) {
+  for (const groups of form.querySelectorAll('[data-groups]')) {
     const names = groups.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
     groups.setCustomValidity(!names.length || names.length > 30 || names.some(name => name.length > 300) ? 'Enter 1–30 groups, up to 300 characters each.' : '');
   }
@@ -48,6 +48,7 @@ function trackForm(form) {
   syncForm(form);
 }
 trackForm($('create-form'));
+trackForm($('profile-form'));
 try { actorId = sessionStorage.getItem('onboarding-demo-actor') || ''; } catch { /* Selection still works without browser storage. */ }
 const pendingCommands = new Map();
 function feedback(message, error = false) { $('feedback').textContent = String(message).replace(/\bmock\s*/gi, ''); $('feedback').dataset.error = String(error); }
@@ -87,6 +88,40 @@ async function loadActors() {
   if (!actors.some(a => a.id === actorId)) actorId = actors[0]?.id || '';
   renderProfile();
 }
+function groupNames(value) { return value.split(/\r?\n/).map(s => s.trim()).filter(Boolean); }
+function applyProfileDefaults() {
+  const form = $('create-form');
+  const profile = onboardingProfiles.find(p => p.id === form.elements.profileId.value);
+  form.elements.requestedGroups.value = profile?.groupsByLocation[form.elements.location.value]?.join('\n') || '';
+  form.elements.adminRequired.value = String(profile?.adminRequired ?? false);
+  syncForm(form);
+}
+function editProfile() {
+  editingProfileId = $('profile-editor-select').value;
+  const profile = onboardingProfiles.find(p => p.id === editingProfileId);
+  editingRevision = profile?.revision ?? null;
+  const form = $('profile-form');
+  form.reset();
+  form.elements.namedItem('name').value = profile?.name || '';
+  form.elements.adminRequired.value = String(profile?.adminRequired ?? false);
+  form.elements.torontoGroups.value = profile?.groupsByLocation.Toronto.join('\n') || '';
+  form.elements.berlinGroups.value = profile?.groupsByLocation.Berlin.join('\n') || '';
+  $('save-profile').textContent = profile ? 'Save profile changes' : 'Create profile';
+  formBaselines.set(form, formValues(form));
+  syncForm(form);
+}
+async function loadProfiles() {
+  const { items } = await api('/api/profiles');
+  onboardingProfiles = items;
+  const form = $('create-form');
+  const previous = form.elements.profileId.value;
+  const options = items.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+  form.elements.profileId.innerHTML = '<option value="">Choose a profile</option>' + options;
+  form.elements.profileId.value = items.some(p => p.id === previous) ? previous : items[0]?.id || '';
+  $('profile-editor-select').innerHTML = '<option value="">Create a new profile</option>' + options;
+  $('profile-editor-select').value = editingProfileId;
+  if (!previous) applyProfileDefaults();
+}
 function renderList() {
   $('hires').innerHTML = hires.length ? hires.map(h => `<button class="hire-choice" data-hire="${esc(h.id)}" aria-pressed="${h.id === selectedId}"><strong>${esc(h.name)}</strong><span>${esc(h.location)} · ${esc(h.startDate)}</span><span>${h.adminRequired ? 'Admin access required' : 'Standard access'}</span></button>`).join('') : '<p>No onboarding plans yet.</p>';
   $('list-summary').textContent = currentActor().role === 'hire' ? 'Your account, device and access progress in one place.' : `${hires.length} teammate${hires.length === 1 ? '' : 's'}${currentActor().role === 'network' ? ' assigned to your location' : ' joining your team'}`;
@@ -97,6 +132,8 @@ async function refresh({ more = false } = {}) {
   const actor = currentActor();
   const personal = actor.role === 'hire';
   $('create-section').hidden = actor.role !== 'em';
+  $('profiles-section').hidden = actor.role !== 'em';
+  if (actor.role === 'em') await loadProfiles();
   $('hire-sidebar').hidden = personal;
   $('workspace').classList.toggle('personal', personal);
   $('planner-link').hidden = !personal;
@@ -124,7 +161,7 @@ async function loadDetail(hireId) {
   const provisioningQueued = d.requestedGroups.every(group => d.assignments.some(a => a.group === group))
     && (!d.adminRequired || d.requests.some(r => r.kind === 'admin'));
   const groupStatus = status => ({ pending: 'Awaiting assignment', succeeded: 'Assigned', failed: 'Assignment failed' })[status] || status;
-  $('detail').innerHTML = `<p class="eyebrow">${esc(d.location)} · Dealertrack developer</p><h2>${esc(d.name)}</h2><p>Starts ${esc(d.startDate)}</p>
+  $('detail').innerHTML = `<p class="eyebrow">${esc(d.location)} · ${esc(d.profileName || d.profileId)}</p><h2>${esc(d.name)}</h2><p>Starts ${esc(d.startDate)}</p>
     <span class="badge">ONBOARDING PROGRESS</span>
     <section class="attention-box ${d.blockers.length ? '' : 'complete'}" aria-labelledby="attention-title">
       ${icon(d.blockers.length ? 'attention' : 'check')}
@@ -143,15 +180,17 @@ async function loadDetail(hireId) {
 async function run(action) {
   if (busy) return;
   busy = true;
+  $('profile-editor-select').disabled = true;
   $('refresh').disabled = true;
   document.querySelectorAll('button').forEach(b => { if (!b.disabled) { b.dataset.pending = 'true'; b.disabled = true; } });
   try { const result = await action(); feedback(result || 'Up to date.'); }
   catch (error) { feedback(error.message, true); }
   finally {
     busy = false; $('refresh').disabled = false;
+    $('profile-editor-select').disabled = false;
     document.querySelectorAll('[data-pending]').forEach(b => { b.disabled = false; delete b.dataset.pending; });
     renderProfile();
-    for (const form of document.querySelectorAll('#create-form, #account-form')) syncForm(form);
+    for (const form of document.querySelectorAll('#create-form, #account-form, #profile-form')) syncForm(form);
   }
 }
 $('profile-accounts').addEventListener('click', event => {
@@ -162,6 +201,7 @@ $('profile-accounts').addEventListener('click', event => {
   $('profile-menu').open = false;
   $('profile-toggle').focus();
   $('create-form').reset();
+  $('profile-editor-select').value = ''; editProfile();
   renderProfile();
   hires = []; nextOffset = null; renderList();
   $('detail').innerHTML = '<p>Loading your workspace…</p>';
@@ -171,7 +211,7 @@ document.addEventListener('click', event => { if (!$('profile-menu').contains(ev
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && $('profile-menu').open) { $('profile-menu').open = false; $('profile-toggle').focus(); }
 });
-$('refresh').addEventListener('click', () => run(async () => { await loadActors(); await refresh(); }));
+$('refresh').addEventListener('click', () => run(async () => { await loadActors(); await refresh(); if (currentActor().role === 'em') editProfile(); }));
 $('more').addEventListener('click', () => run(() => refresh({ more: true })));
 $('hires').addEventListener('click', event => {
   const button = event.target.closest('[data-hire]');
@@ -185,7 +225,25 @@ $('create-form').addEventListener('submit', event => {
   body.adminRequired = body.adminRequired === 'true';
   run(async () => {
     const hire = await api('/api/hires', 'POST', body);
-    selectedId = hire.id; event.target.reset(); await loadActors(); await refresh();
+    selectedId = hire.id; event.target.reset(); await loadActors(); await refresh(); applyProfileDefaults();
+  });
+});
+$('create-form').elements.profileId.addEventListener('change', applyProfileDefaults);
+$('create-form').elements.location.addEventListener('change', applyProfileDefaults);
+$('profile-editor-select').addEventListener('change', editProfile);
+$('profile-form').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!canSubmit(event.target)) return;
+  const fields = new FormData(event.target);
+  const body = { name: fields.get('name'), adminRequired: fields.get('adminRequired') === 'true',
+    groupsByLocation: { Toronto: groupNames(fields.get('torontoGroups')), Berlin: groupNames(fields.get('berlinGroups')) } };
+  if (editingProfileId) body.revision = editingRevision;
+  run(async () => {
+    const profile = await api(editingProfileId ? `/api/profiles/${editingProfileId}` : '/api/profiles', editingProfileId ? 'PUT' : 'POST', body);
+    editingProfileId = profile.id;
+    await loadProfiles(); $('profile-editor-select').value = profile.id; editProfile();
+    $('create-form').elements.profileId.value = profile.id; applyProfileDefaults();
+    return 'Profile saved. Its defaults are ready for the next hire; existing plans are unchanged.';
   });
 });
 $('detail').addEventListener('submit', event => {

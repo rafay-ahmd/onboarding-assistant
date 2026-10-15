@@ -80,6 +80,8 @@ Before changing shared server routes, request/state contracts or persistence, co
 
 ## Code map
 
+EM-managed profiles: schema v2 adds SQLite `profiles`. `GET/POST /api/profiles` and `PUT /api/profiles/:id` require an EM. All EMs share catalogue editing; PUT requires the last-read revision and rejects conflicts. Profile fields are name, groupsByLocation (Toronto/Berlin, 1–30 groups each), adminRequired, revision and update metadata. Hire creation resolves any stored profile, uses its location/admin defaults when omitted and saves profileName/profileRevision plus independent group/admin values. Existing explicit-group clients remain supported. Migration snapshots legacy hire profile labels without changing requests or assignments. Seed must never overwrite EM edits; explicit demo reset clears/reseeds the catalogue. The portal editor/prefill uses these APIs; the separate planner still uses its static entitlement recipe. Tests: tests/profiles.test.mjs.
+
 - server.mjs: loopback HTTP server, shared platform API wiring and fixed asset routes.
 - backend/db/: SQLite migration/repository and fictional demo seed/reset.
 - backend/services/: actor-scoped platform commands and replaceable temporary workflow stubs.

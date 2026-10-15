@@ -11,6 +11,10 @@ function text(value, field, optional = false) {
   requireValue(typeof value === 'string' && value.trim().length <= 300 && (optional || value.trim()), 400, 'INVALID_INPUT', `Provide ${field} (up to 300 characters).`);
   return value.trim();
 }
+function groups(value) {
+  requireValue(Array.isArray(value) && value.length > 0 && value.length <= 30, 400, 'INVALID_INPUT', 'Supply 1–30 explicit groups for each location.');
+  return [...new Set(value.map(g => text(g, 'group')))];
+}
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
   if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
@@ -33,6 +37,13 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
     return hire;
   }
   function network(actor) { requireValue(actor.role === 'network', 403, 'FORBIDDEN', 'This operation requires the assigned network operator.'); }
+  function manager(actor) { requireValue(actor.role === 'em', 403, 'FORBIDDEN', 'Only an EM can manage onboarding profiles.'); }
+  function profileFields(body) {
+    requireValue(body.groupsByLocation && typeof body.groupsByLocation === 'object' && !Array.isArray(body.groupsByLocation), 400, 'INVALID_INPUT', 'Configure groups for Toronto and Berlin.');
+    requireValue(Object.keys(body.groupsByLocation).every(location => locations.includes(location)), 400, 'INVALID_INPUT', 'Choose supported profile locations.');
+    requireValue(typeof body.adminRequired === 'boolean', 400, 'INVALID_INPUT', 'adminRequired must be true or false.');
+    return { name: text(body.name, 'profile name'), groupsByLocation: Object.fromEntries(locations.map(location => [location, groups(body.groupsByLocation[location])])), adminRequired: body.adminRequired };
+  }
   function event(actor, hireId, type, resourceId, detail = {}) {
     return store.put('events', { id: id(), hireId, actorId: actor.id, type, resourceId, detail, createdAt: now() });
   }
@@ -79,6 +90,31 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
   }
   return {
     actors: () => store.list('actors'),
+    profiles(actorId) {
+      manager(actor(actorId));
+      const items = [];
+      for (let offset = 0;; offset += 100) {
+        const rows = store.list('profiles', { offset });
+        items.push(...rows);
+        if (rows.length < 100) break;
+      }
+      return { items };
+    },
+    createProfile(actorId, key, body) {
+      return mutate(actorId, 'create-profile', key, body, acting => {
+        manager(acting);
+        return store.put('profiles', { id: id(), ...profileFields(body), revision: 1, updatedBy: acting.id, updatedAt: now() });
+      });
+    },
+    updateProfile(actorId, profileId, key, body) {
+      return mutate(actorId, `profile:${profileId}`, key, body, acting => {
+        manager(acting);
+        const previous = store.get('profiles', profileId);
+        requireValue(previous, 404, 'NOT_FOUND', 'Profile not found.');
+        requireValue(body.revision === previous.revision, 409, 'PROFILE_CHANGED', 'This profile changed in another session. Refresh profiles and try again.');
+        return store.put('profiles', { ...previous, ...profileFields(body), revision: previous.revision + 1, updatedBy: acting.id, updatedAt: now() });
+      });
+    },
     list(actorId, offset = 0) {
       const acting = actor(actorId);
       requireValue(Number.isInteger(offset) && offset >= 0, 400, 'INVALID_INPUT', 'offset must be a non-negative integer.');
@@ -103,14 +139,15 @@ export function createPlatform(store, { workflows = demoWorkflows } = {}) {
         const email = text(body.email ?? '', 'email', true);
         requireValue(!email || emailPattern.test(email), 400, 'INVALID_INPUT', 'Provide a valid email or leave it empty.');
         requireValue(locations.includes(body.location) && acting.locations.includes(body.location), 400, 'INVALID_INPUT', 'Choose a permitted location.');
-        requireValue(body.profileId === profileId, 400, 'INVALID_INPUT', 'Choose the Dealertrack developer profile.');
+        const profile = typeof body.profileId === 'string' && store.get('profiles', body.profileId);
+        requireValue(profile, 400, 'INVALID_INPUT', 'Choose an existing onboarding profile.');
         requireValue(!body.managerId || body.managerId === acting.id, 403, 'FORBIDDEN', 'An EM can only create their own hires.');
         requireValue(typeof body.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.startDate) && Number.isFinite(Date.parse(body.startDate)) && new Date(body.startDate).toISOString().slice(0, 10) === body.startDate, 400, 'INVALID_INPUT', 'Provide a valid start date.');
-        requireValue(Array.isArray(body.requestedGroups) && body.requestedGroups.length > 0 && body.requestedGroups.length <= 30, 400, 'INVALID_INPUT', 'Supply 1–30 explicit groups.');
-        const requestedGroups = [...new Set(body.requestedGroups.map(g => text(g, 'group')))];
-        requireValue(typeof body.adminRequired === 'boolean', 400, 'INVALID_INPUT', 'adminRequired must be true or false.');
+        const requestedGroups = groups(body.requestedGroups ?? profile.groupsByLocation[body.location]);
+        const adminRequired = body.adminRequired ?? profile.adminRequired;
+        requireValue(typeof adminRequired === 'boolean', 400, 'INVALID_INPUT', 'adminRequired must be true or false.');
         const hire = { id: id(), name, email, startDate: body.startDate, managerId: acting.id, location: body.location,
-          profileId, requestedGroups, adminRequired: body.adminRequired, createdAt: now() };
+          profileId: profile.id, profileName: profile.name, profileRevision: profile.revision, requestedGroups, adminRequired, createdAt: now() };
         if (structuredName) Object.assign(hire, { firstName, lastName });
         store.put('hires', hire);
         request(acting, hire, 'account', 'account', { name, ...(structuredName ? { firstName, lastName } : {}), location: hire.location, startDate: hire.startDate });
@@ -163,6 +200,8 @@ export function seedDemo(store) {
     { id: 'network-berlin', name: 'Berlin network (demo)', role: 'network', locations: ['Berlin'] }
   ];
   store.transaction(() => {
+    // Recreate the seed only after an explicit demo reset; never overwrite EM edits.
+    if (!store.get('profiles', profileId)) store.put('profiles', { id: profileId, name: 'Dealertrack developer', groupsByLocation: { Toronto: ['DEMO-TORONTO-DEVELOPERS'], Berlin: ['DEMO-BERLIN-DEVELOPERS'] }, adminRequired: false, revision: 1 });
     for (const a of actors) {
       const existing = store.get('actors', a.id);
       if (!existing || (a.id === 'em-vibgy' && existing.name === 'Vibgy (demo EM)')) store.put('actors', a);

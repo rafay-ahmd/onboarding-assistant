@@ -7,6 +7,26 @@
     <section class="intro"><p id="intro-eyebrow" class="eyebrow">YOUR TEAM’S NEXT CHAPTER</p><h1 id="intro-title">A place to start.</h1><p id="intro-description">Loading your workspace…</p></section>
     <div class="workspace-toolbar"><p id="scope"></p><button id="refresh" class="secondary">Refresh</button></div>
     <div id="feedback" role="status" aria-live="polite"></div>
+    <section id="profiles-section" class="panel" hidden>
+      <details id="profiles-editor">
+        <summary>Manage onboarding profiles</summary>
+        <h2>Set it up once. Reuse for every hire.</h2>
+        <p>All engineering managers can create and edit these shared profiles. Changes apply to future onboarding plans.</p>
+        <label>Profile to edit<select id="profile-editor-select"><option value="">Create a new profile</option></select></label>
+        <form id="profile-form">
+          <div class="form-grid">
+            <label>Profile name<input name="name" required maxlength="300" placeholder="e.g. Dealertrack developer"></label>
+            <label>Default admin access<select name="adminRequired"><option value="false">Not required</option><option value="true">Required</option></select></label>
+          </div>
+          <div class="profile-groups-grid">
+            <label>Toronto AD groups<textarea name="torontoGroups" data-groups required placeholder="One group per line"></textarea></label>
+            <label>Berlin AD groups<textarea name="berlinGroups" data-groups required placeholder="One group per line"></textarea></label>
+          </div>
+          <p class="fine">Use 1–30 groups per location. The selected location determines which defaults a new hire receives.</p>
+          <button type="submit" id="save-profile" disabled>Create profile</button>
+        </form>
+      </details>
+    </section>
     <section id="create-section" class="panel" hidden>
       <div class="section-title"><div><p class="eyebrow">ENGINEERING MANAGER</p><h2>Welcome someone new.</h2></div></div>
       <form id="create-form">
@@ -16,10 +36,10 @@
           <label>Start date<input name="startDate" type="date" required></label>
           <label>Location<select name="location"><option>Toronto</option><option>Berlin</option></select></label>
           <label>Pre-account email <span>Optional</span><input name="email" type="email" maxlength="300" placeholder="May be added later"></label>
-          <label>Profile<select name="profileId"><option value="dealertrack-developer">Dealertrack developer (draft)</option></select></label>
+          <label>Onboarding profile<select name="profileId" required><option value="">Choose a profile</option></select></label>
           <label>Admin access<select name="adminRequired"><option value="false">Not required</option><option value="true">Required</option></select></label>
         </div>
-        <label>Requested AD groups <span>One per line; confirm with EM</span><textarea name="requestedGroups" required placeholder="Explicit group names"></textarea></label>
+        <label>Requested AD groups <span>Prefilled from the profile; adjust for this hire if needed</span><textarea name="requestedGroups" data-groups required placeholder="Choose a profile to prefill groups"></textarea></label>
         <button type="submit">Create onboarding plan</button>
       </form>
     </section>

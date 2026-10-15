@@ -17,9 +17,14 @@ const migrations = [String.raw`
   CREATE TABLE commands (actorId TEXT NOT NULL REFERENCES actors(id), operation TEXT NOT NULL,
     commandKey TEXT NOT NULL, payload TEXT NOT NULL, response TEXT NOT NULL,
     PRIMARY KEY(actorId, operation, commandKey));
+`, String.raw`
+  CREATE TABLE profiles (id TEXT PRIMARY KEY, body TEXT NOT NULL);
+  INSERT INTO profiles VALUES ('dealertrack-developer', '{"id":"dealertrack-developer","name":"Dealertrack developer","groupsByLocation":{"Toronto":["DEMO-TORONTO-DEVELOPERS"],"Berlin":["DEMO-BERLIN-DEVELOPERS"]},"adminRequired":false,"revision":1}');
+  UPDATE hires SET body=json_set(body, '$.profileName', 'Dealertrack developer', '$.profileRevision', 1)
+    WHERE json_extract(body, '$.profileId')='dealertrack-developer' AND json_extract(body, '$.profileName') IS NULL;
 `];
 
-const tables = new Set(['actors', 'hires', 'accounts', 'requests', 'assignments', 'events']);
+const tables = new Set(['actors', 'hires', 'accounts', 'requests', 'assignments', 'events', 'profiles']);
 export function openStore(path) {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
@@ -40,7 +45,7 @@ export function openStore(path) {
     resetDemo() {
       db.exec('BEGIN IMMEDIATE');
       try {
-        for (const name of ['commands', 'events', 'assignments', 'requests', 'accounts', 'hires', 'actors']) db.exec(`DELETE FROM ${name}`);
+        for (const name of ['commands', 'events', 'assignments', 'requests', 'accounts', 'hires', 'actors', 'profiles']) db.exec(`DELETE FROM ${name}`);
         db.exec('COMMIT');
       } catch (error) { db.exec('ROLLBACK'); throw error; }
     },

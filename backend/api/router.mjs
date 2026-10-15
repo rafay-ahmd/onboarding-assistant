@@ -28,12 +28,16 @@ export function apiRouter(platform) {
       const key = req.headers['idempotency-key'];
       let data;
       if (req.method === 'GET' && url.pathname === '/api/demo/actors') data = platform.actors();
+      else if (req.method === 'GET' && url.pathname === '/api/profiles') data = platform.profiles(actor);
+      else if (req.method === 'POST' && url.pathname === '/api/profiles') data = platform.createProfile(actor, key, await readBody(req));
       else if (req.method === 'GET' && url.pathname === '/api/hires') data = platform.list(actor, Number(url.searchParams.get('offset') ?? 0));
       else if (req.method === 'POST' && url.pathname === '/api/hires') data = platform.create(actor, key, await readBody(req));
       else {
         const hire = url.pathname.match(/^\/api\/hires\/([^/]+)(?:\/(account|provision|requests))?$/);
         const action = url.pathname.match(/^\/api\/(requests|assignments)\/([^/]+)\/actions$/);
-        if (hire && !hire[2] && req.method === 'GET') data = platform.get(actor, hire[1]);
+        const profile = url.pathname.match(/^\/api\/profiles\/([^/]+)$/);
+        if (profile && req.method === 'PUT') data = platform.updateProfile(actor, profile[1], key, await readBody(req));
+        else if (hire && !hire[2] && req.method === 'GET') data = platform.get(actor, hire[1]);
         else if (hire?.[2] === 'account' && req.method === 'PUT') data = platform.account(actor, hire[1], key, await readBody(req));
         else if (hire?.[2] === 'provision' && req.method === 'POST') data = platform.provision(actor, hire[1], key, await readBody(req));
         else if (hire?.[2] === 'requests' && req.method === 'POST') {

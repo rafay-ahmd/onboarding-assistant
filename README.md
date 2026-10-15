@@ -28,6 +28,12 @@ Provision access queues group assignments and any required admin request. Once q
 
 Share the committed seed code and migrations, not `data/onboarding.sqlite`. Each contributor runs `npm start` to create the same fictional starting accounts in their own local DB. Changes made in one developer's DB are not synced to others; a single shared server/database would be needed for everyone to see the same live edits.
 
+### EM-managed onboarding profiles
+
+In an EM workspace, open **Manage onboarding profiles** to create a profile or select an existing one to edit. Set its name, Toronto/Berlin AD groups and default admin requirement. All EMs share the catalogue; network and hire roles cannot change it. Saved profiles live in SQLite (schema v2), with a seeded Dealertrack developer profile. Startup migration preserves existing onboarding records and never overwrites edited defaults.
+
+When creating a hire, choose the profile and location to prefill AD groups and admin access. You can adjust those values for that hire. Each plan stores the profile ID, name, revision and its own group/admin values, so future profile edits do not change existing plans or provisioning. Save stays disabled until valid edits exist. Conflicting profile edits are rejected; use Refresh to reload the saved profile before retrying. These templates configure the shared portal; the separate Slack planner's entitlement/workstation recipe remains in `profiles/dealertrack-developer.json`.
+
 ### Existing local planner
 
 Open http://127.0.0.1:4173/planner for the separate access planner and workstation checks. Its existing browser records are preserved and are not imported into shared hires. Backend entitlement submission remains pending Rafay's integration; its reserved API returns `501 WORKFLOW_PENDING`.

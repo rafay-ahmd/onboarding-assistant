@@ -167,7 +167,7 @@ Each PR should state its track, contract changes, tests run and any remaining mo
 
 Approved clarifications from Vibgy: use fictional Toronto/Berlin locations; include clearly labelled temporary workflow stubs so the dashboard can be demonstrated before Rafay's integration.
 
-Runtime: Node 24+, built-in `node:sqlite`, no package dependencies. `npm start` runs the loopback server. SQLite schema v1 migrates on startup; `npm run seed` is non-destructive and idempotent. Stop the server before `npm run reset:demo`, which clears only this application's local demo tables and reseeds. DB files/sidecars under `data/` are ignored.
+Runtime: Node 24+, built-in `node:sqlite`, no package dependencies. `npm start` runs the loopback server. SQLite schema v2 migrates on startup; `npm run seed` is non-destructive and idempotent. Stop the server before `npm run reset:demo`, which clears only this application's local demo tables (including profiles) and reseeds. DB files/sidecars under `data/` are ignored.
 
 ### Sameer: HTTP integration
 
@@ -250,3 +250,13 @@ Browser reload after stopping/restarting the local server retained Casey, Alex's
 Profile presentation update: a circular initials control at the top right opens the fictional account switcher, closes on outside click/Escape and remembers selection per browser tab. Main pages use role-specific headings and controls; the hire page has no team picker and the local planner link appears for hires. The footer and simulated resource labels retain demo context without the previous implementation-oriented banner.
 
 Verification for this update: all 23 tests passed with `node --test --test-isolation=none tests/*.test.mjs`. The added test checks structured compound names, required first/last fields, request payload fields and legacy compatibility. Browser created Samira de Silva from separate fields, switched through the profile menu to Berlin's network queue (no EM form), then to Samira's personal page (no team picker or account editor), and retained that profile after reload. Local preview: ignored `reports/profile-switcher.png`.
+
+### Implemented profile catalogue contract
+
+- `GET /api/profiles` returns `{data:{items:[...]}}`; EM only, shared across EMs.
+- `POST /api/profiles` accepts `{name,groupsByLocation:{Toronto:[...],Berlin:[...]},adminRequired}`; EM only. Uses the existing actor/idempotency headers. Returns the created profile with immutable UUID and revision 1.
+- `PUT /api/profiles/:id` accepts the same fields plus `revision` from the last read; EM only. Returns the incremented revision. Stale edits return `409 PROFILE_CHANGED` without overwriting data.
+- Groups are trimmed/deduplicated; each location requires 1–30 nonempty names, each at most 300 characters. Profile names require 1–300 characters; adminRequired is boolean.
+- `POST /api/hires` now accepts any stored profile ID. Omit requestedGroups/adminRequired to use saved defaults for the hire location; explicit per-hire values remain supported. The created plan snapshots profileName, profileRevision and its effective groups/admin requirement. Later profile edits do not mutate existing hires, requests or assignments.
+- Migration v2 creates/seeds the catalogue and snapshots legacy Dealertrack labels. Normal startup/seed preserves EM edits. The separate Slack planner's recipe and connected-user identity remain independent.
+- Verification: service/HTTP tests cover shared EM management, forbidden roles, idempotent creation, invalid payload rollback, stale-revision rejection, location defaults/overrides, hire snapshot isolation, migration, restart and seed/reset. Browser verification created Platform engineer and a Berlin hire using its saved group/admin defaults.
