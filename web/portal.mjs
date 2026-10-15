@@ -159,6 +159,7 @@ async function refresh({ more = false } = {}) {
   if (['em', 'network'].includes(actor.role)) await loadLocationDefaults();
   if (actor.role === 'em') await loadProfiles();
   $('hire-sidebar').hidden = personal;
+  $('workspace-heading').hidden = personal;
   $('workspace').classList.toggle('personal', personal);
   $('planner-link').hidden = !personal;
   $('intro-eyebrow').textContent = actor.role === 'em' ? 'ENGINEERING MANAGER' : actor.role === 'network' ? 'NETWORK OPERATIONS' : 'YOUR ONBOARDING';
@@ -187,9 +188,8 @@ async function loadDetail(hireId) {
   const provisioningQueued = d.requestedGroups.every(group => d.assignments.some(a => a.group === group))
     && (!d.adminRequired || d.requests.some(r => r.kind === 'admin'));
   const groupStatus = status => ({ pending: 'Awaiting assignment', succeeded: 'Assigned', failed: 'Assignment failed' })[status] || status;
-  $('detail').innerHTML = `<p class="eyebrow">${esc(d.location)} · ${esc(d.profileName || d.profileId)}</p><h2>${esc(d.name)}</h2><p>Starts ${esc(d.startDate)}</p>
-    <span class="badge">ONBOARDING PROGRESS</span>
-    ${d.accessSummary?.supported?`<section class="access-progress panel"><div class="progress-heading"><strong>Slack access requests</strong><strong>${d.accessSummary.percent}%</strong></div><progress max="100" value="${d.accessSummary.percent}" aria-label="Verified Slack access"></progress><p>${d.accessSummary.verified} / ${d.accessSummary.total} verified · ${d.accessSummary.waiting} awaiting follow-up</p><p class="fine">Shared with this hire’s access workflow. Approval is separate from actual access verification.</p>${currentActor().role==='hire'?`<a href="/planner?hireId=${encodeURIComponent(d.id)}">Open access requests and workstation setup →</a>`:''}</section>`:''}
+  $('detail').innerHTML = `<div class="hire-overview"><p class="eyebrow">${esc(d.location)} · ${esc(d.profileName || d.profileId)}</p><h2>${esc(d.name)}</h2><p class="hire-start">Starts ${esc(d.startDate)}</p></div>
+    ${d.accessSummary?.supported?`<section class="access-progress access-summary"><div class="progress-heading"><h3>Slack access requests</h3><strong>${d.accessSummary.percent}%</strong></div><progress max="100" value="${d.accessSummary.percent}" aria-label="Verified Slack access"></progress><p class="progress-count">${d.accessSummary.verified} / ${d.accessSummary.total} verified · ${d.accessSummary.waiting} awaiting follow-up</p><p class="fine">Shared with this hire’s access workflow. Approval is separate from actual access verification.</p>${currentActor().role==='hire'?`<a class="workflow-link" href="/planner?hireId=${encodeURIComponent(d.id)}">Open access requests and workstation setup <span aria-hidden="true">→</span></a>`:''}</section>`:''}
     <section class="attention-box ${d.blockers.length ? '' : 'complete'}" aria-labelledby="attention-title">
       ${icon(d.blockers.length ? 'attention' : 'check')}
       <div><h3 id="attention-title">${d.blockers.length ? 'What needs attention' : 'Onboarding plan complete'}</h3>
@@ -211,7 +211,7 @@ async function run(action) {
   $('location-editor-select').disabled = true;
   $('refresh').disabled = true;
   document.querySelectorAll('button').forEach(b => { if (!b.disabled) { b.dataset.pending = 'true'; b.disabled = true; } });
-  try { const result = await action(); feedback(result || 'Up to date.'); }
+  try { const result = await action(); feedback(result || 'Latest progress loaded.'); }
   catch (error) { feedback(error.message, true); }
   finally {
     busy = false; $('refresh').disabled = false;

@@ -24,6 +24,7 @@ function message(text){$('message').textContent=text;}
 $('profile-selector').innerHTML=catalog.map(p=>`<option value="${esc(p.id)}" ${p.id===profile.id?'selected':''}>${esc(p.name)}</option>`).join('');
 $('profile-selector').addEventListener('change',e=>{const url=new URL(location.href);url.searchParams.set('profile',e.target.value);location.assign(url.href);});
 $('profile-selector').disabled=Boolean(hireId);
+if(hireId){$('profile-hint').textContent='Profile assigned by your engineering manager.';$('explore-profiles').hidden=false;}
 document.title=profile.name+' · Onboarding workspace';
 const localDraft=profile.id==='cms-developer';
 $('local-plan').hidden=!localDraft;
@@ -101,7 +102,7 @@ function renderReport(){if(!report){$('report-list').innerHTML='<p class="empty"
 }
 function render(){renderAccess();renderSteps();if(!canEditPlan)for(const control of document.querySelectorAll('[data-status],[data-ticket],[data-step],#report-file,#hire-form input'))control.disabled=true;}
 fillForm();render();
-if(hireId){$('planner-context').hidden=false;$('planner-context-title').textContent=hireContext?hireContext.name+'’s onboarding':'Onboarding unavailable';$('planner-context-detail').textContent=contextError||'Requests belong to this hire. Workstation reports and setup notes stay in this browser for this hire and profile.';}
+if(hireId){$('planner-context').hidden=false;$('planner-context-title').textContent=hireContext?hireContext.name+'’s onboarding':'Onboarding unavailable';$('planner-context-detail').textContent=contextError||'Track your access, check your workstation, and follow your team’s setup steps.';}
 if(contextError){$('slack-connection').textContent=contextError;for(const button of document.querySelectorAll('[data-review-request]'))button.disabled=true;}
 if(!localDraft&&!contextError)liveRequests=mountLiveRequests({apiBase:hireId?'/api/hires/'+encodeURIComponent(hireId)+'/slack/':'/api/slack/',actorId,container:$('slack-connection'),cards:$('access-list'),profile,notify:message,onRequestsChange:updateAccessProgress,onVerified:r=>{
   if(canEditPlan && r.profileId===profile.id && state.access[r.accessId]){
