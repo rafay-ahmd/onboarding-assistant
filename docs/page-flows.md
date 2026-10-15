@@ -2,7 +2,7 @@
 
 ## Requester identity
 
-The initial onboarding form is temporarily removed while role-based dashboards are developed. The connected Slack account is the requester. GitHub username and AWS group are entered within each request dialog.
+The Dealertrack onboarding form is temporarily removed while role-based dashboards are developed. The connected Slack account is the requester. GitHub username and AWS group are entered within each request dialog.
 
 ## Access requests
 
@@ -60,3 +60,7 @@ flowchart TB
   A8 -. Verified own access updates prerequisites .-> S1
   W3 -. Findings guide setup .-> S2
 ```
+
+## CMS draft planner
+
+At `/planner?profile=cms-developer`, the CMS profile uses its own browser-local hire details, reviewed request queue and manual verification plan. It does not mount the Dealertrack live Slack adapter or use the role portal’s hire records. Queue outcomes do not update actual access/setup; its readiness bar counts manual actual verification. The selected profile persists in the URL; switching to Dealertrack restores its live access-only screen. CMS has no inventory checker/import. Source links, EM review questions and Windows/WSL/VS Code setup remain profile-specific.

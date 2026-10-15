@@ -34,6 +34,7 @@ Portal tickets, assignments and service responses in this demo are simulated. Vi
 - Temporary account-ticket, group failure/retry and conditional admin workflows are implemented; full portal entitlement workflow remains pending.
 - `/planner` is a separate single-operator live Slack access flow with reviewed drafts, send/sync/reply and explicit actual-access verification. Historical browser-local mock queue modules remain development fixtures.
 - Read-only workstation inventory script and JSON report import; no automatic setup execution.
+- CMS adds a static draft profile and local simulation at `/planner?profile=cms-developer`, separate from the EM-managed SQLite profile catalogue. Dealertrack retains its connected-account Slack planner.
 - No MCP implementation or setup guide is present on `main` yet.
 
 Reuse these modules rather than rebuilding them. Read [the queue contract](request-queue-contract.md) before changing queue persistence or state transitions.
@@ -105,6 +106,14 @@ Creating a hire only needs pre-account details; work email is not required yet. 
 
 Name-field update requested by Vibgy: the EM form requires separate `firstName` and `lastName`. New structured API payloads must provide both, with up to 300 characters each; whitespace is trimmed and `name` is derived for display. Legacy name-only callers and saved records remain supported without guessing name parts. Structured fields are also included in the account-request payload.
 
+### Profile integration handoff
+
+The separate `/planner` browser now reads the static `profiles/catalog.json` and supports `dealertrack-developer` and `cms-developer`. This is distinct from the EM-managed SQLite profile catalogue exposed by `GET /api/profiles`; the CMS template is not automatically seeded or mapped into that catalogue. These are draft profiles, not approved automatic assignment policies. See [CMS evidence and review checklist](cms-profile.md). AutoTrader still needs its own reviewed profile; do not substitute the AS24 or Dealertrack profile for it.
+
+Before adding CMS to the implemented backend/MCP clients, agree how the existing `githubUsername`, `githubRepository`, optional `githubTeam`/`githubMirrorUser`, `subteam` and `awsGroup` drafting fields map to the proposed `requestedGroups`. A `CMS-GH-` prefix is not an assignable group. Preserve profile-scoped entitlement IDs, per-item routing and distinct organization membership/SSO/repository access outcomes. Profile candidates must not automatically provision every listed tool. The user confirmed mandatory local admin for CMS; other profiles retain their own admin policy. CMS repository requests can identify the repository and optionally a team/AD group or example user without knowing its group; automatic group assignment still requires an approved exact group. GitHub requests support Access Request tickets or #helpdesk, with an up-to-six-hour end-to-end sync window. GitHub account/2FA, SSO, CLI setup and checkout are separate manually recorded milestones. The draft programme tool list is not a confirmed CMS entitlement policy.
+
+The implemented Track A contract below now settles account-request completion and group retry actions: recording account details completes the account request, and failed assignments use the retry action. Remaining CMS integration decisions are approved groups/applicability and explicit mapping of the CMS template into a managed SQLite profile. MCP should discover the authoritative managed profile IDs through GET /api/profiles as documented below, not reuse the static planner catalogue as backend IDs. The initial five MCP tools do not expose every mock transition needed by the target demo. Either document those actions as dashboard steps or agree narrow mock-action tools with the same backend authorization. No backend/API/MCP functionality is added by the CMS increment.
+
 ### Workflow boundaries
 
 - Hire creation stores a pending account request. An explicit mock ticket action gives it a `DEMO-` reference; no live URL.
@@ -112,7 +121,7 @@ Name-field update requested by Vibgy: the EM form requires separate `firstName` 
 - Provisioning creates missing assignment records and, when `adminRequired=true`, a separate admin request. Repeated calls return existing records.
 - Group failures remain visible and retryable. Successful assignments are not rerun. Persist transitions and events atomically.
 - Reuse existing queue transitions: delivery is not ticket creation; grant is not verification; unknown delivery requires reconciliation rather than resend.
-- Admin requests remain separate from the Slack queue and retain the dedicated-form route. Team-routed entitlements remain manual.
+- Admin requests remain separate resources with profile-specific routing: Dealertrack retains main’s live Slack route; CMS uses user-confirmed #helpdesk posts in the local draft mode. The CMS browser mock queue now supports this route. Team-routed entitlements remain manual.
 - Derive blockers from persisted records: missing account fields, pending account ticket, failed/pending groups, outstanding admin/access requests. Keep simulated onboarding progress distinct from real workstation readiness.
 
 ## Work packages

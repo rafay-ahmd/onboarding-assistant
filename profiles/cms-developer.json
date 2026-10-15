@@ -1,0 +1,328 @@
+{
+  "id": "cms-developer",
+  "name": "Collateral Management Services developer",
+  "roleLabel": "CMS software developer",
+  "reviewStatus": "Draft \u2014 CMS baseline confirmed by user; subteam requirements still need EM review",
+  "sourceRevision": "e05c5338699c3645774f9c5336b32d2d31be47ed",
+  "reviewedAt": "2026-10-15",
+  "inventorySupported": false,
+  "sources": [
+    "https://docs.services.as24.tech/onboarding/",
+    "https://docs.services.as24.tech/onboarding/account-setup/",
+    "https://docs.services.as24.tech/onboarding/as24-tools-access/",
+    "https://docs.services.as24.tech/onboarding/developer-machine/",
+    "https://docs.services.as24.tech/products/github/user-management/",
+    "https://docs.services.as24.tech/products/fast/",
+    "https://docs.services.as24.tech/products/sonarqube/permissions/",
+    "https://docs.services.as24.tech/products/new-relic/access/",
+    "https://docs.services.as24.tech/products/grafana/reference/access-permissions/",
+    "https://autoscout24.atlassian.net/wiki/spaces/SelfServ/pages/1719238689/GitHub+Access",
+    "https://autoscout24.atlassian.net/wiki/spaces/PO/pages/2818506803/GitHub+access"
+  ],
+  "openQuestions": [
+    "EM/subteam: confirm required tools, repositories, branches and permission levels. Supply the repository team/AD group or an example user whenever possible. If unsure which team to request, check with the team lead or #platform-engineering-support first.",
+    "EM/subteam: confirm whether AWS and VPN are needed, then supply accounts, exact role groups, region and VPN requirements. No AWS group is preselected.",
+    "EM/subteam: confirm Windows/WSL versions, SDK/runtime versions, databases and local services. Windows, WSL, Visual Studio Code and required local admin are already confirmed.",
+    "EM/subteam: define a successful dependency restore, build and application smoke test in an approved test environment.",
+    "EM/subteam: confirm observability needs. New Relic has a CMS mapping; Grafana remains early access in the general onboarding guide. Do not request every platform tool automatically."
+  ],
+  "access": [
+    {
+      "id": "github",
+      "name": "CMS GitHub organization",
+      "route": "helpdesk",
+      "url": "https://autoscout24.atlassian.net/servicedesk/customer/portal/105/group/185",
+      "reason": "Request addition to the TR-AP-GitHub-CMS Okta group for tdr-cms organization membership through an Access Request ticket or #helpdesk post. For first-time GitHub access, complete the organization SSO workflow separately. Allow up to 6 hours for changes to fully sync before asking Employee Tech to verify.",
+      "group": "TR-AP-GitHub-CMS",
+      "evidence": "User-confirmed CMS Okta group; GitHub Access guide documents ticket/#helpdesk routes, SSO and up-to-6-hour sync window",
+      "source": "https://autoscout24.atlassian.net/wiki/spaces/SelfServ/pages/1719238689/GitHub+Access",
+      "fields": [
+        "githubUsername",
+        "manager"
+      ],
+      "destination": "#helpdesk",
+      "routeLabel": "Access Request ticket or #helpdesk",
+      "urlLabel": "Open Access Request form (alternative)"
+    },
+    {
+      "id": "github-team",
+      "name": "CMS GitHub repository access",
+      "route": "helpdesk",
+      "reason": "Post the specific CMS repository and required permission in #helpdesk, or create an Access Request ticket. Include the team/AD group whenever possible, or an example user with the needed access. If unsure which team to request, check with your team lead or #platform-engineering-support before submitting. Allow up to 6 hours for changes to fully sync before asking Employee Tech to verify. Other GitHub questions go to #platform-engineering-support.",
+      "evidence": "GitHub Access guide: ticket/#helpdesk, team/AD group or example user, and up-to-6-hour synchronization; CMS repository routing confirmed by user",
+      "source": "https://autoscout24.atlassian.net/wiki/spaces/SelfServ/pages/1719238689/GitHub+Access",
+      "fields": [
+        "githubUsername",
+        "githubRepository",
+        "manager"
+      ],
+      "destination": "#helpdesk",
+      "optionalFields": [
+        "githubTeam",
+        "githubMirrorUser"
+      ],
+      "routeLabel": "Access Request ticket or #helpdesk",
+      "url": "https://autoscout24.atlassian.net/servicedesk/customer/portal/105/group/185",
+      "urlLabel": "Open Access Request form (alternative)",
+      "groupPrefix": "CMS-GH-"
+    },
+    {
+      "id": "artifacts",
+      "name": "CMS artifact repository",
+      "route": "team",
+      "reason": "Confirm access to https://traderca.jfrog.io and the project-specific package feeds. This is the documented artifact instance for tdr-cms. Follow approved credential setup locally; never paste tokens here.",
+      "evidence": "FASt instance mapping for Trader Canada; CMS feeds still need team confirmation",
+      "source": "https://docs.services.as24.tech/products/fast/",
+      "fields": [
+        "manager"
+      ]
+    },
+    {
+      "id": "sonarqube",
+      "name": "CMS SonarQube developer access",
+      "route": "helpdesk",
+      "reason": "If required by the EM, ask Employee Tech for TR-AP-SonarQube-CMS-Developers to access CMS code analysis projects. PowerUsers membership is reserved for engineering managers and leads.",
+      "group": "TR-AP-SonarQube-CMS-Developers",
+      "evidence": "Documented CMS developer group; applicability requires EM review",
+      "source": "https://docs.services.as24.tech/products/sonarqube/permissions/",
+      "fields": [
+        "manager"
+      ]
+    },
+    {
+      "id": "new-relic",
+      "name": "CMS New Relic standard access",
+      "route": "helpdesk",
+      "reason": "If required by the EM, ask Employee Tech for TR-AP-NEWRELIC-CMS-Developers. Standard access supports dashboards, alerts and logs; Full Platform access requires separate justification and approval.",
+      "group": "TR-AP-NEWRELIC-CMS-Developers",
+      "evidence": "Documented CMS Basic/Core access route; applicability requires EM review",
+      "source": "https://docs.services.as24.tech/products/new-relic/access/",
+      "fields": [
+        "manager"
+      ]
+    },
+    {
+      "id": "atlassian",
+      "name": "CMS Jira / Confluence",
+      "route": "form",
+      "url": "https://autoscout24.atlassian.net/servicedesk/customer/portal/105/group/185",
+      "reason": "Confirm the CMS projects and spaces, then use the documented Atlassian(Jira/Confluence) application in the OET portal. One reviewed request per person/tool; do not assume Dealertrack ticket routing applies.",
+      "evidence": "General AS24 tool-access mapping; CMS projects/spaces require confirmation",
+      "source": "https://docs.services.as24.tech/onboarding/as24-tools-access/",
+      "fields": [
+        "manager"
+      ]
+    },
+    {
+      "id": "aws",
+      "name": "CMS AWS / VPN access \u2014 subteam-specific",
+      "route": "team",
+      "reason": "Confirm AWS/VPN needs with the CMS subteam. If needed, supply the subteam, accounts, exact role group, region and VPN requirements before asking the agreed owner. There is no universal CMS AWS/VPN group; do not use a general playground or Dealertrack group.",
+      "evidence": "User-confirmed subteam-specific scope; exact accounts, groups and routing remain unresolved",
+      "source": "https://docs.services.as24.tech/onboarding/account-setup/",
+      "fields": [
+        "subteam",
+        "awsGroup",
+        "manager"
+      ]
+    },
+    {
+      "id": "admin",
+      "name": "CMS local machine admin rights",
+      "route": "helpdesk",
+      "reason": "Post a separate request in #helpdesk for required local admin rights on the Windows workstation, to support the approved Windows/WSL and Visual Studio Code setup. Wait for approval and verify the entitlement through the approved process; a non-elevated shell does not prove admin rights are absent.",
+      "evidence": "User-confirmed required local admin and #helpdesk route; general machine guide provides background",
+      "source": "https://docs.services.as24.tech/onboarding/developer-machine/",
+      "fields": [
+        "manager"
+      ],
+      "destination": "#helpdesk"
+    }
+  ],
+  "steps": [
+    {
+      "id": "requirements-review",
+      "name": "Confirm CMS onboarding requirements with the EM",
+      "dependsOn": [],
+      "action": "Review the confirmed Windows/WSL, Visual Studio Code, required-admin and GitHub baseline. Resolve the remaining subteam questions: required access subset, repositories, permissions, runtime versions, AWS/VPN applicability and verification criteria. Record completion only after EM review.",
+      "verification": "EM has confirmed the team-specific plan. Optional tools are not automatically mandatory.",
+      "mode": "EM confirmation required"
+    },
+    {
+      "id": "account-review",
+      "name": "Verify company account prerequisites",
+      "dependsOn": [
+        "requirements-review"
+      ],
+      "action": "With Employee Tech, confirm company identity availability, work email, Okta/MFA and access to the team's communication tools.",
+      "verification": "The hire signs in successfully using the approved flow. Do not store credentials in this planner.",
+      "mode": "Guided manual verification"
+    },
+    {
+      "id": "github-account",
+      "name": "Prepare GitHub account and authenticator-app 2FA",
+      "dependsOn": [
+        "account-review"
+      ],
+      "action": "Create a GitHub account, or reuse an existing personal account, and use authenticator-app-only 2FA as specified by the GitHub setup guide. Provide the GitHub username to #helpdesk when requesting TR-AP-GitHub-CMS and any known repository team. Do not share passwords, recovery codes or tokens.",
+      "verification": "The hire can use the GitHub account with authenticator-app 2FA and has supplied the correct username for the access request. Organization membership and SSO are separate outcomes.",
+      "mode": "Guided manual verification",
+      "source": "https://autoscout24.atlassian.net/wiki/spaces/PO/pages/2818506803/GitHub+access"
+    },
+    {
+      "id": "github-sso",
+      "name": "Accept CMS GitHub invitation and complete SSO",
+      "dependsOn": [
+        "github-account",
+        "github"
+      ],
+      "action": "After Helpdesk confirms the username was added, complete https://docs.services.as24.tech/products/github/user-management/#sso-workflow for https://github.com/orgs/tdr-cms/sso. Click Continue, use the approved work-identity login and Okta MFA. Complete SSO once per organization so AD identity can match the GitHub user for team synchronization.",
+      "verification": "Confirm organization membership and completed SSO for the intended GitHub account. Do not record repository access from SSO alone or collect credentials in this planner.",
+      "mode": "Guided manual verification"
+    },
+    {
+      "id": "repository-check",
+      "name": "Verify access to an agreed CMS repository",
+      "dependsOn": [
+        "github-sso",
+        "github-team"
+      ],
+      "action": "After the repository access request is approved, allow up to 6 hours for changes to fully sync before asking ET to verify. Then check the requested CMS repository and permission. The platform documentation describes a 90-minute team-sync cycle, but the GitHub Access guide sets the longer end-to-end window; do not retry the request just because a sync is pending.",
+      "verification": "The hire can access the intended repository with the requested permission. Organization membership or a completed ticket alone is insufficient.",
+      "mode": "Guided manual verification"
+    },
+    {
+      "id": "machine-plan",
+      "name": "Review the CMS workstation setup plan",
+      "dependsOn": [
+        "account-review"
+      ],
+      "action": "Review the confirmed Windows with WSL and Visual Studio Code baseline. Confirm approved Windows/WSL versions, SDKs, local services and subteam-specific VPN needs. Local admin is required and requested in #helpdesk. Do not reuse the Dealertrack Oracle/IIS setup automatically.",
+      "verification": "The CMS subteam has supplied an approved setup plan and runtime versions. This records review, not completed installation.",
+      "mode": "Team review; no installer or CMS checker"
+    },
+    {
+      "id": "workstation-setup",
+      "name": "Verify Windows, WSL and Visual Studio Code",
+      "dependsOn": [
+        "machine-plan",
+        "admin"
+      ],
+      "action": "After approved local admin is verified, follow the approved Windows/WSL setup process and configure Visual Studio Code for the agreed CMS workflow. Request admin through #helpdesk; do not bypass device restrictions. This dashboard does not install software.",
+      "verification": "Confirm Windows/WSL meet the team requirements, WSL starts successfully, and Visual Studio Code opens the agreed workspace using the approved WSL workflow. Record completion manually.",
+      "mode": "Guided manual verification; no installer"
+    },
+    {
+      "id": "github-cli-setup",
+      "name": "Install and verify GitHub CLI through approved apps",
+      "dependsOn": [
+        "workstation-setup"
+      ],
+      "action": "Use SelfService or Company Portal to install GitHub CLI for the approved Windows/WSL workflow. If it is unavailable, ask #helpdesk to add it there before installation. Do not substitute an unapproved installer.",
+      "verification": "GitHub CLI is available in the intended development shell; check gh --version. This records a manual check and does not authenticate or install anything from the dashboard.",
+      "mode": "Guided manual verification",
+      "source": "https://autoscout24.atlassian.net/wiki/spaces/PO/pages/2818506803/GitHub+access"
+    },
+    {
+      "id": "repository-sync",
+      "name": "Sync the CMS repository into a home-folder Code workspace",
+      "dependsOn": [
+        "repository-check",
+        "github-cli-setup"
+      ],
+      "action": "Create a Code folder in the approved development home folder and sync the agreed CMS repository there. Avoid Desktop, Documents and folders synchronized with SharePoint or other cloud storage. Use approved company tools and project data. Do not put customer personal data in the repository or tokens in documents/chat; ask the project lead when data rules are unclear. Follow any separately approved programme-tool setup if applicable.",
+      "verification": "The hire can open the intended repository on GitHub and has the agreed local checkout under the home-folder Code workspace. Request only access needed for assigned work.",
+      "mode": "Guided manual verification",
+      "source": "https://autoscout24.atlassian.net/wiki/spaces/PO/pages/2818506803/GitHub+access"
+    },
+    {
+      "id": "dependency-restore",
+      "name": "Verify a CMS dependency restore",
+      "dependsOn": [
+        "repository-sync",
+        "artifacts"
+      ],
+      "action": "After approved setup, configure the agreed project feeds locally against traderca.jfrog.io and restore the agreed CMS project without sharing credentials.",
+      "verification": "Record a successful restore of the team-selected project; artifact login alone is insufficient.",
+      "mode": "Guided manual verification"
+    },
+    {
+      "id": "build",
+      "name": "Verify the agreed CMS build",
+      "dependsOn": [
+        "dependency-restore"
+      ],
+      "action": "Build the team-confirmed repository/branch with its documented toolchain. This dashboard does not execute a build.",
+      "verification": "The agreed project builds successfully with the confirmed SDK and configuration.",
+      "mode": "Guided manual verification"
+    },
+    {
+      "id": "smoke",
+      "name": "Verify CMS application readiness",
+      "dependsOn": [
+        "build"
+      ],
+      "action": "Run the EM-approved CMS smoke test in an approved test environment. Confirm any required AWS, VPN, database or other access before testing.",
+      "verification": "The agreed application smoke test succeeds. Inventory, granted access and mock verification do not establish readiness.",
+      "mode": "Team-defined manual verification"
+    }
+  ],
+  "workstation": {
+    "os": "Windows",
+    "developmentEnvironment": "WSL",
+    "ide": "Visual Studio Code",
+    "adminRequired": true
+  },
+  "confirmedRequirements": [
+    "CMS GitHub organization access requires the TR-AP-GitHub-CMS Okta group; use an Access Request ticket or #helpdesk post. Organization SSO and repository access remain separate.",
+    "The workstation baseline is Windows with WSL and Visual Studio Code.",
+    "Local machine admin rights are required. Request them with a separate post in #helpdesk.",
+    "Specific CMS repository access uses a #helpdesk post or Access Request ticket. Include the repository/permission and, whenever possible, a team/AD group or example user with the needed access. Allow up to 6 hours for changes to fully sync before asking ET to verify.",
+    "AWS and VPN access depend on the CMS subteam; there is no universal CMS AWS/VPN entitlement.",
+    "GitHub setup guidance: use an account with authenticator-app 2FA, provide the username to #helpdesk, complete organization SSO after helpdesk confirmation, and use approved GitHub CLI installation and a home-folder Code workspace outside synced folders."
+  ],
+  "confirmationSource": "User clarification in this session; not a live entitlement check or authenticated EM approval.",
+  "sourceDocuments": [
+    {
+      "url": "https://autoscout24.atlassian.net/wiki/spaces/SelfServ/pages/1719238689/GitHub+Access",
+      "status": "Reviewed access-request guidance; no page version supplied"
+    },
+    {
+      "url": "https://autoscout24.atlassian.net/wiki/spaces/PO/pages/2818506803/GitHub+access",
+      "status": "Draft for review; programme access owner/request route still pending",
+      "publishedCommit": "368cccfa52da520f663ca2a4e77e482ad74f5072",
+      "canonicalRepositoryPath": "projects/product-transformers/site/pages/onboarding/before-you-start.md"
+    }
+  ],
+  "programmeGuidance": {
+    "source": "https://autoscout24.atlassian.net/wiki/spaces/PO/pages/2818506803/GitHub+access",
+    "status": "Draft programme checklist; not automatically a CMS entitlement policy",
+    "tools": [
+      {
+        "name": "Confluence and Jira",
+        "audience": "Every programme joiner",
+        "when": "Before the first cycle"
+      },
+      {
+        "name": "ChatGPT and Codex",
+        "audience": "Every programme joiner",
+        "when": "Before work in the team repository"
+      },
+      {
+        "name": "GitHub and team repository access",
+        "audience": "Every programme joiner",
+        "when": "Before work in the team repository"
+      },
+      {
+        "name": "Figma and design library",
+        "audience": "Designers",
+        "when": "Before design work"
+      },
+      {
+        "name": "Node, Yarn, VPN, AWS or Docker",
+        "audience": "Assigned people",
+        "when": "Only for a coded prototype that needs them"
+      }
+    ]
+  }
+}

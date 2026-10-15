@@ -1,6 +1,6 @@
-# Dealertrack onboarding prototype
+# Onboarding Assistant prototype
 
-Hackathon 26: Automate Onboarding for NewHires. A local request planner, dependency checklist, and read-only Windows inventory checker. The Dealertrack profile is a **draft for engineering-manager review**, not an authoritative entitlement policy.
+Hackathon 26: Automate Onboarding for NewHires. A local request planner, dependency checklist, and read-only Dealertrack Windows inventory checker. Dealertrack and CMS profiles are **drafts for engineering-manager review**, not authoritative entitlement policies. An AutoTrader profile is not implemented yet.
 
 For the three-person POC work split, implemented API/data contracts, delivery evidence and remaining integration work, see [the hackathon delivery plan](docs/hackathon-plan.md). Its current baseline and checked work packages distinguish delivered features from pending work.
 
@@ -12,7 +12,7 @@ From this directory with Node.js 24 or newer available (built-in `node:sqlite`; 
 node server.mjs
 ```
 
-Open http://127.0.0.1:4173 for the shared team portal. It seeds fictional Toronto/Berlin hires and actors, persists data in Git-ignored `data/onboarding.sqlite`, and provides the local API described in [the delivery plan](docs/hackathon-plan.md#implemented-platform-contract-track-a). The server binds only to loopback. There is no machine-execution endpoint or external submission.
+Open http://127.0.0.1:4173 for the shared team portal. It seeds fictional Toronto/Berlin hires and actors, persists data in Git-ignored `data/onboarding.sqlite`, and provides the local API described in [the delivery plan](docs/hackathon-plan.md#implemented-platform-contract-track-a). The server binds only to loopback. The portal has no machine-execution endpoint or external submission. The separate Dealertrack planner can send real Slack messages after review when configured.
 
 Open the profile circle at the top right to switch fictional accounts. The selected account stays active across reloads in that tab. EMs enter first and last name separately and create hires; network operators see their location's queue and record AD ID/work email/laptop ID, then queue and advance mock provisioning. Hires see a personal progress page. Use **Refresh** to see another session's updates. Account switching is demo impersonation, not authentication; backend role/location checks apply to the selected actor. Temporary platform stubs simulate Jira tickets, groups and admin access until Rafay replaces them. MCP remains Sameer's track.
 
@@ -38,7 +38,17 @@ When creating a hire, the profile prefills its groups and admin requirement. An 
 
 Open http://127.0.0.1:4173/planner for the separate access planner and workstation checks. Its existing browser records are preserved and are not imported into shared hires. Backend entitlement submission remains pending Rafay's integration; its reserved API returns `501 WORKFLOW_PENDING`.
 
-Enter employee details, prepare individual access-request drafts, open the admin-rights form, and record ticket links/status manually. Granting and verification are separate states. Plans are stored in this browser's localStorage; clear the plan before switching employees. Imported reports stay in memory only. Demo actions use fictional identities and reports. No messages or tickets are sent.
+Dealertrack uses the connected Slack account and its request dialogs; no hire-details form is shown. CMS has a separate browser-local hire form and draft queue, without a Slack connection. CMS queue outcomes never verify actual access or unblock real setup. Both profiles preserve their own browser-local manual plan. Imported reports stay in memory only.
+
+## Choose a team profile
+
+Use the profile selector, or open `http://127.0.0.1:4173/planner?profile=cms-developer` for CMS. Dealertrack remains the default. Each profile stores its own manual plan; the existing Dealertrack storage key is preserved. Profile selection reloads the page and discards any in-memory report, but preserves saved plans. This is not multi-user persistence; clear the selected plan before changing hires.
+
+The CMS draft separates GitHub organization membership from repository-team access and uses documented CMS GitHub, SonarQube, New Relic and artifact mappings. The user confirmed Windows with WSL, Visual Studio Code, mandatory local admin and the `TR-AP-GitHub-CMS` Okta group. Specific repository access and local admin requests go to `#helpdesk`; repository details are required, while a team/AD group or example GitHub user can help ET resolve access. GitHub organization and repository access may use an Access Request ticket or `#helpdesk` post; changes may take up to six hours to fully sync. AWS/VPN needs depend on the subteam. Tool applicability, exact repositories, SDK/runtime versions and smoke-test criteria still need CMS EM/subteam review. The Setup journey starts with a manually recorded EM review. Windows/WSL/VS Code verification requires actual admin access marked verified; mock grants do not unblock it. Other conditional access cards remain candidates, not a requirement to request every tool.
+
+CMS Atlassian requests retain the OET form route and cannot enter the mock Slack queue. GitHub organization/repository requests offer ticket and #helpdesk routes; required admin uses #helpdesk. CMS helpdesk drafts support the local simulation; no posts are sent for CMS. Dealertrack retains main’s live Slack flow. CMS ticket bookmarks accept the documented `autoscout24.atlassian.net` service-desk host as well as the existing helpdesk host. There is no ticket-status synchronization.
+
+The inventory script and fictional reports remain Dealertrack-only. CMS hides inventory import/demo controls and rejects Dealertrack reports; it has no inventory checker or setup executor. See [CMS profile evidence, review checklist and handoff](docs/cms-profile.md). CMS evidence cites the [documentation site](https://docs.services.as24.tech/onboarding/) and records user-confirmed requirements separately. The [GitHub Access guide](https://autoscout24.atlassian.net/wiki/spaces/SelfServ/pages/1719238689/GitHub+Access) supplies request routes and the six-hour synchronization window. The [GitHub setup guide](https://autoscout24.atlassian.net/wiki/spaces/PO/pages/2818506803/GitHub+access) supplies authenticator-app 2FA, post-confirmation SSO, GitHub CLI via Company Portal/SelfService and a home-folder Code checkout outside synced locations. Its programme-wide tool list remains draft guidance pending CMS applicability review.
 
 ## Inspect this workstation
 
@@ -88,7 +98,7 @@ The current batch script lists 49 clones despite documentation saying 50. Histor
 
 Access cards routed to helpdesk now offer **Review mock request**. Complete the employee details, edit the business justification, review the generated message and queue it. The queue supports simulated message delivery, follow-up questions/replies, ticket creation, grant, verification, denial and known-failure retries. Uncertain delivery requires reconciliation rather than another send.
 
-Everything is labelled MOCK: no Slack connection, messages, real tickets or permission changes. Simulation never updates the real manual access tracker or setup completion. Admin-rights and team-routed items remain outside the Slack queue.
+Everything is labelled MOCK: no Slack connection, messages, real tickets or permission changes. Simulation never updates the real manual access tracker or setup completion. Dealertrack admin rights follow the current connected-account Slack flow; CMS admin rights use the separate local draft queue. Team-routed items remain outside the queue.
 
 Mock requests are stored separately in browser localStorage, keyed by profile, normalized email and entitlement. Duplicate requests are blocked even after reload. Reset mock queue clears all simulated requests across employees after confirmation. It does not clear the manual plan. This storage is not authenticated, transactional across tabs, shared across devices or production-ready.
 
@@ -123,7 +133,7 @@ A successful Slack send is not proof Remy accepted the request. Missing scopes a
 
 ## Integrated access flow (October 15, 2026)
 
-The product UI now uses real Slack requests directly on access cards: Review request → save draft → review and send → sync replies / reply → confirm access works. The standalone Live Slack requests panel and all simulation controls are removed from the interface. Existing simulated browser data is ignored; it is never migrated into real requests. Historical mock modules and tests remain development fixtures only. The connection bar identifies the authenticated requester independently of the onboarding form. No automatic grant or verification is inferred from Slack text. Admin rights retain the dedicated form. Reports come from the actual workstation checker; sample report buttons and fictional hire filling are removed.
+The Dealertrack planner now uses real Slack requests directly on access cards: Review request → save draft → review and send → sync replies / reply → confirm access works. The standalone Live Slack requests panel and all simulation controls are removed from the Dealertrack interface. Existing simulated browser data is ignored; it is never migrated into real requests. Historical mock modules and tests remain development fixtures only. The connection bar identifies the authenticated requester independently of the onboarding form. No automatic grant or verification is inferred from Slack text. Admin rights retain the dedicated form. Reports come from the actual workstation checker; sample report buttons and fictional hire filling are removed.
 
 
 ## Request review and readiness update
@@ -134,6 +144,10 @@ The merged app serves the SQLite portal at `/` and the Slack-enabled planner at 
 
 ## Current access-only screen (October 15, 2026)
 
-The onboarding details form is removed pending the incoming role-based dashboards. Request identity comes from the connected Slack account; GitHub username and AWS group are entered inside their individual request dialogs. Legacy saved hire fields remain stored for compatibility but are not used by this screen. Local admin rights now use the same helpdesk Slack review/edit/send/sync/verify flow as the other helpdesk entitlements; no separate admin form link or manager field is shown. This UI routing change does not establish that the external helpdesk bot accepts the route. App-generated messages may be filtered by helpdesk; successful submission alone does not imply a response or ticket.
+The Dealertrack onboarding details form is removed pending the incoming role-based dashboards. Request identity comes from the connected Slack account; GitHub username and AWS group are entered inside their individual request dialogs. Legacy saved hire fields remain stored for compatibility but are not used by this screen. Local admin rights now use the same helpdesk Slack review/edit/send/sync/verify flow as the other helpdesk entitlements; no separate admin form link or manager field is shown. This UI routing change does not establish that the external helpdesk bot accepts the route. App-generated messages may be filtered by helpdesk; successful submission alone does not imply a response or ticket.
 
 The current screen is single-operator. Explicitly verified own Slack records update local access/setup prerequisites without depending on a removed hire email field. When multi-user dashboards arrive, replace this local state mapping with backend-authorized hire/account records; never apply one connected user’s verification across hires. This section supersedes earlier form/admin-route UI descriptions.
+
+## CMS integration with the portal and Slack planner
+
+CMS profile selection is available at `/planner?profile=cms-developer`; `/` remains the existing SQLite role-based portal. The platform API supports EM-managed profiles, but this static CMS planner template is not automatically registered in its SQLite catalogue. The live Slack backend remains Dealertrack-specific. CMS does not mount the live Slack client, make `/api/slack/` requests, or import portal/Slack identities into its form. Switching back to Dealertrack restores its connected-account request dialogs, readiness bar, admin Slack route and report import, without showing the CMS form or local queue. Historical mock modules remain fixtures for Dealertrack and supply CMS’s local draft simulation only.
