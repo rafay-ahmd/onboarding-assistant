@@ -1,0 +1,31 @@
+{
+  "id": "dealertrack-developer",
+  "name": "Dealertrack developer",
+  "reviewStatus": "Draft — EM review required",
+  "sources": [
+    "https://github.com/vit100-trader/dev-workstation-setup",
+    "https://trader.atlassian.net/wiki/spaces/DE/pages/4212031615/Dealertrack+Developer+Workstation+Setup",
+    "https://trader.atlassian.net/wiki/spaces/CLOUD/pages/4891476045/AWS+Client+VPN+Transition+to+AS24+Okta+Authentication"
+  ],
+  "access": [
+    {"id":"admin","name":"Local admin rights","route":"form","url":"https://go.helpdesk.autoscout24.com/servicedesk/customer/portal/105/create/471","reason":"Install approved dependencies and configure IIS.","priority":"Early blocker","evidence":"New-hire experience","fields":["manager"]},
+    {"id":"vs","name":"Visual Studio subscription","route":"helpdesk","reason":"Use the approved development tooling.","evidence":"Setup guide","fields":[]},
+    {"id":"github","name":"Dealertrack GitHub organization","route":"helpdesk","reason":"Clone the required tdr-dealertrack repositories.","evidence":"Setup guide","fields":["githubUsername"]},
+    {"id":"jfrog","name":"JFrog Artifactory","route":"helpdesk","reason":"Restore packages from dtncan-nuget-local.","evidence":"Setup guide","fields":[]},
+    {"id":"aws","name":"AWS / VPN role group","route":"helpdesk","reason":"Reach Dealertrack development resources through the approved VPN.","evidence":"New-hire request and VPN guide; EM must confirm group","fields":["awsGroup"]},
+    {"id":"trader-jira","name":"Trader Jira","route":"helpdesk","reason":"Access Dealertrack work tickets.","evidence":"New-hire experience","fields":[]},
+    {"id":"as24-jira","name":"AS24 Jira","route":"helpdesk","reason":"Access AS24 work tickets.","evidence":"New-hire experience","fields":[]},
+    {"id":"confluence","name":"Confluence","route":"helpdesk","reason":"Read team documentation and workstation instructions.","evidence":"New-hire experience","fields":[]},
+    {"id":"sharepoint","name":"DT onboarding SharePoint folder","route":"team","reason":"Access supplemental setup material when needed.","evidence":"Guide links to folder; request route unconfirmed","fields":[]},
+    {"id":"db-user","name":"Database / application test user","route":"team","reason":"Obtain approved connection details and a suitable application test user.","evidence":"Guide and Local Setup blocker; owner/entitlements need EM confirmation","fields":[]}
+  ],
+  "steps": [
+    {"id":"preflight","name":"Check workstation prerequisites","dependsOn":[],"action":"Run scripts/Test-OnboardingReadiness.ps1. It inspects local state and writes a report.","verification":"Review every missing, blocked, and unverified result.","mode":"Read-only checker"},
+    {"id":"oracle","name":"Install the 32-bit Oracle client","dependsOn":["admin"],"action":"Use the approved installer with Oracle Base C:\\Oracle.","verification":"Expected client directory and Oracle network configuration exist.","mode":"Guided manual step"},
+    {"id":"setup","name":"Run the existing workstation setup","dependsOn":["admin","github","oracle"],"action":"Review the current setup.bat before running as Administrator. Git LFS assets must be hydrated.","verification":"Check actual installed files and IIS configuration; script completion alone is insufficient.","mode":"Not executed by this prototype"},
+    {"id":"packages","name":"Configure JFrog and restore packages","dependsOn":["jfrog","setup","vs"],"action":"Authenticate using the approved JFrog flow; configure the feed locally without sharing tokens.","verification":"Restore the agreed Core/Status projects using Visual Studio tooling.","mode":"Guided manual step"},
+    {"id":"vpn","name":"Import and connect the VPN profile","dependsOn":["aws"],"action":"Use AS24 Okta and the approved endpoint profile.","verification":"Confirm connection and access to required development resources.","mode":"Guided manual step"},
+    {"id":"build","name":"Build Core and Status","dependsOn":["packages"],"action":"Confirm the intended QA branches with the team and build using Visual Studio MSBuild.","verification":"Required projects build; record targeting-pack or dependency failures.","mode":"Future automation"},
+    {"id":"smoke","name":"Verify local application readiness","dependsOn":["build","vpn","db-user"],"action":"Open the portal, Status, and Create App. Use 127.0.0.1 for the known local IPv6 issue.","verification":"With team permission in a test environment, save an application and find its ID in Status.","mode":"Guided manual step"}
+  ]
+}
