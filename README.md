@@ -2,7 +2,7 @@
 
 Hackathon 26: Automate Onboarding for NewHires. A local request planner, dependency checklist, and read-only Windows inventory checker. The Dealertrack profile is a **draft for engineering-manager review**, not an authoritative entitlement policy.
 
-For the three-person POC work split, shared API/data contracts, milestones and acceptance checks, see [the hackathon delivery plan](docs/hackathon-plan.md). That document describes pending work, not currently implemented features.
+For the three-person POC work split, implemented API/data contracts, delivery evidence and remaining integration work, see [the hackathon delivery plan](docs/hackathon-plan.md). Its current baseline and checked work packages distinguish delivered features from pending work.
 
 ## Start the dashboard
 

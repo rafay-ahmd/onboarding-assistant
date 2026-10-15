@@ -1,8 +1,14 @@
 # Three-person hackathon delivery plan
 
-Date: October 15, 2026. Status: implementation plan; capabilities below are pending unless listed as existing.
+Updated: October 15, 2026. Status: Track A delivered on `main` through `7ba2f9a`; Track B portal integration and Track C MCP remain pending.
 
-Track A has now been implemented; see the [implemented platform contract](#implemented-platform-contract-track-a) and [delivery evidence](#track-a-delivery-evidence). The original baseline and remaining B/C work below are retained for context.
+Use the [implemented platform contract](#implemented-platform-contract-track-a) and [profile/location contract](#implemented-profile-catalogue-contract) as the current API authority. The original shared proposal below describes the intended full workflow; its entitlement actions are not all implemented. In particular, portal entitlement creation returns `501 WORKFLOW_PENDING`.
+
+Immediate handoff:
+
+- **Vibgy:** platform delivered, including EM-managed profiles, network location defaults, persistence, role-specific screens and action gating. Coordinate any new persistence or API requirements from B/C.
+- **Rafay:** replace/extend `backend/services/demo-workflows.mjs` through the documented injection seam; integrate durable entitlement requests into the portal using immutable hire IDs. The separate `/planner` live Slack flow already exists, but is not connected to fictional portal hires.
+- **Sameer:** build the HTTP-backed MCP adapter and demo instructions. Discover profile IDs with `GET /api/profiles`; use `firstName`/`lastName` when creating hires. Omit `requestedGroups` to use profile defaults; the backend always adds the network team's location defaults. Add profile/location management tools if those settings must also be configurable through Codex.
 
 ## Goal and demo
 
@@ -10,7 +16,7 @@ Deliver a local onboarding portal backed by SQLite, with mocked external service
 
 Target demo:
 
-1. Through Codex/MCP, an EM creates a fictional hire with location, manager, start date, profile, requested groups and admin requirement.
+1. An EM saves one AD-group list per profile; network teams save their location defaults. Through Codex/MCP, the EM creates a fictional hire with first/last name, location, start date and profile. Profile groups plus location defaults are combined and deduplicated; manager comes from the acting EM.
 2. The app creates one fictional Jira account-creation ticket and assigns the hire to the network queue for that location.
 3. A network operator opens the dashboard and records AD ID, work email and laptop ID.
 4. The operator starts mock AD-group provisioning. One group fails; retry succeeds without duplicating successful assignments.
@@ -18,15 +24,17 @@ Target demo:
 6. Codex explains remaining blockers. The hire dashboard shows the same progress and event history.
 7. Restart the server and reload two browser sessions: hires, tickets and outcomes remain available.
 
-All tickets, assignments and service responses in this demo are explicitly simulated. Simulated completion must not change the existing real-access verification or workstation setup prerequisites.
+Portal tickets, assignments and service responses in this demo are simulated. Visible controls use normal product wording, with demo context in the footer; internal simulation flags remain. Simulated completion must not change real-access verification or workstation setup prerequisites. The separate `/planner` can send live Slack requests after explicit review/confirmation; keep it isolated from the fictional portal demo.
 
 ## Current baseline
 
-- Buildless browser app; `server.mjs` serves static assets and GET requests only.
-- Draft Dealertrack profile, hire-details form, manual access tracker and setup dependency checklist.
-- Browser-local mock helpdesk queue with delivery, follow-up, fictional tickets, denial, retry and reconciliation.
-- Read-only workstation inventory script and JSON report import.
-- No shared DB, role workflow, account provisioning or MCP server yet.
+- Buildless Node 24+ app; `/` serves the role-based portal with a SQLite-backed read/write API.
+- EM create/list and profile management; assigned network account/device editor, location defaults and provisioning controls; self-only hire progress. Account switching is demo impersonation, with server-enforced scope.
+- Schema v3 persists profiles and location defaults. New hires snapshot both group lists and revisions; later edits affect only new plans. Saves require valid changed values.
+- Temporary account-ticket, group failure/retry and conditional admin workflows are implemented; full portal entitlement workflow remains pending.
+- `/planner` is a separate single-operator live Slack access flow with reviewed drafts, send/sync/reply and explicit actual-access verification. Historical browser-local mock queue modules remain development fixtures.
+- Read-only workstation inventory script and JSON report import; no automatic setup execution.
+- No MCP implementation or setup guide is present on `main` yet.
 
 Reuse these modules rather than rebuilding them. Read [the queue contract](request-queue-contract.md) before changing queue persistence or state transitions.
 
@@ -38,21 +46,21 @@ Reuse these modules rather than rebuilding them. Read [the queue contract](reque
 | B: workflow and mocks | Rafay | Account ticket lifecycle, mock AD assignment, conditional admin requests, existing queue backend integration, failure/retry behavior | `backend/workflows/`, `backend/providers/`, `web/request-queue*.mjs`, `web/mock-slack-adapter.mjs`, related tests |
 | C: MCP and demo | Sameer | MCP tool schemas/adapter, configuration instructions, smoke tests and demo script | `mcp/`, `tests/mcp*.test.mjs`, `docs/mcp.md`, `docs/demo.md` |
 
-These are proposed new directories, not existing modules. Track A owns shared server wiring and DB schema. Track B supplies workflow functions and repository requirements; A wires them into the service/API layer. Track C consumes the API and does not write directly to SQLite. Agree edits to shared files before starting; use separate branches and small integration PRs.
+Track A's `backend/` modules and portal files now exist; B/C directories in the table are proposed. The current workflow seam is `backend/services/demo-workflows.mjs`; the live Slack implementation is under `server/` and `web/live-requests.mjs`. Track A owns shared server wiring and DB schema. Track B supplies workflow functions and repository requirements; A coordinates API/schema changes. Track C consumes HTTP and does not write directly to SQLite. Use separate branches and small integration PRs.
 
 ## POC scope
 
 - One local Node process owns SQLite; bind HTTP to loopback.
-- Seed fictional EM, network and hire actors. A demo actor selector replaces SSO and is clearly labelled as impersonation for this local demo.
+- Seed fictional EM, network and hire actors. A top-right account switcher replaces SSO; the footer identifies the hackathon demo. This is local impersonation.
 - Enforce permissions and network-location scope in backend services; UI filtering alone is insufficient. Demo identity is not production authentication.
 - Mock Jira, AD, admin service desk and optional Slack using deterministic responses. No credentials or external submissions are required.
 - Explicit user actions advance simulations. No background scheduler or real provisioning is needed.
 - Preserve manual real-access records and existing readiness checks.
-- Defer SSO, live integrations, workstation installations, remote management and production deployment.
+- Defer SSO, live portal provisioning, workstation installations, remote management and production deployment. The existing separate Slack planner does not establish portal integration.
 
 ## Shared contract: freeze before parallel implementation
 
-Spend the first 30 minutes agreeing this section. Treat changes as explicit contract updates in this document and tests. Examples below are proposed v1 shapes.
+This section retains the original full-workflow proposal. The implemented contract later in this document takes precedence for clients; coordinate remaining changes in this document and contract tests before implementation.
 
 ### Data
 
@@ -117,8 +125,12 @@ Name-field update requested by Vibgy: the EM form requires separate `firstName` 
 - [x] Build multi-hire EM create/list view, location-scoped network queue/account editor, and hire progress view.
 - [x] Connect dashboard to API persistence. Keep existing browser-local data isolated; do not auto-import ambiguous records into shared hires.
 - [x] Provide a working API slice, fictional seeds, payload examples and contract tests for B/C. Add restart-persistence and authorization tests.
+- [x] Persist shared EM profiles with one group list, admin default and revision checks; assigned network teams manage their location defaults. Combine/deduplicate on creation and preserve existing hire snapshots.
+- [x] Add separate first/last name fields, top-right account switching, attention cues and valid/changed/prerequisite-based button gating.
 
 ### B — workflow and mocked services
+
+Temporary platform stubs already cover account tickets, provisioning prerequisites, group retry and admin branching. The unchecked items below mean Rafay's full provider/entitlement integration, not missing baseline demo behavior. Reuse those stubs and tests rather than duplicating them. The live Slack planner is implemented separately; linking it to shared hires requires an explicit identity and worker contract.
 
 - [ ] Implement deterministic mock account-ticket, AD-group and admin providers with success/failure scenarios.
 - [ ] Supply workflows that operate through injected repositories; no second DB connection or standalone schema ownership.
@@ -132,6 +144,7 @@ Name-field update requested by Vibgy: the EM form requires separate `firstName` 
 
 - [ ] Implement a local stdio MCP adapter using the supported MCP SDK; document install/start/configuration and the configured demo actor.
 - [ ] Expose `list_hires`, `create_hire`, `get_onboarding_status`, `record_account_details`, and `provision_access` against the agreed HTTP API.
+- [ ] Expose profile discovery for hire creation; include profile create/update and location-default read/update tools if demo configuration is in scope. Preserve EM versus assigned-network permissions and revision checks.
 - [ ] Mutating tools accept an explicit idempotency key; preserve it across retries. Return useful validation/blocker errors and clear simulation labels.
 - [ ] Keep stdout reserved for MCP messages; diagnostics go to stderr. Report backend unavailability clearly.
 - [ ] Start against fixture API responses while A builds persistence. Then test the real local API, actor restrictions and duplicate mutations.
@@ -150,16 +163,18 @@ Integrate at each gate rather than waiting for three completed branches. Cut Sla
 
 ## Acceptance and handoff
 
-- [ ] Existing model/queue tests pass; simulated outcomes never unblock real setup.
-- [ ] New backend tests cover unauthorized cross-hire/cross-location access and invalid transitions.
-- [ ] Duplicate create/provision/request commands return existing results; account email edits do not create a new identity.
-- [ ] Restart retains hires, account details, requests, assignments and event history.
+- [x] Existing model/queue tests pass; simulated outcomes never unblock real setup.
+- [x] New backend tests cover unauthorized cross-hire/cross-location access and invalid transitions.
+- [x] Implemented create/provision/stub-action commands are idempotent; account email edits retain hire identity. Entitlement-command acceptance remains Track B work.
+- [x] Restart retains hires, account details, requests, assignments, event history, profiles and location defaults.
 - [ ] Dashboard and MCP show identical derived blockers for the same actor/hire.
-- [ ] Browser checks cover each role, two hires, location filtering, admin branching and a failed group retry.
-- [ ] All seed/demo artifacts are fictional; no credentials, machine reports or DB files are committed.
-- [ ] README documents runtime, start/test/seed/reset commands and MCP setup. Update AGENTS.md as capabilities become implemented.
+- [x] Browser checks cover each role, two hires, location filtering, admin branching and a failed group retry; profile and location-default editors are checked too.
+- [x] Portal seed/demo artifacts are fictional; local DB files and generated reports remain ignored.
+- [x] README and AGENTS.md document current runtime, start/test/seed/reset, API boundaries and profile/location behavior.
+- [ ] Track B durable entitlement integration passes its transition, identity and restart checks.
+- [ ] Sameer documents MCP setup and verifies dashboard/MCP parity end to end.
 
-Baseline tests: `node --test tests/*.test.mjs`. If the local sandbox blocks test child processes, use `node --test --test-isolation=none tests/model.test.mjs tests/request-queue.test.mjs` on a Node version supporting that flag. New tests should be included in the normal test command as they are added.
+Tests: `npm test` or `node --test tests/*.test.mjs`. If the local sandbox blocks test child processes, use `node --test --test-isolation=none tests/*.test.mjs`. Latest implementation verification passed all 44 tests; MCP parity remains unverified.
 
 Each PR should state its track, contract changes, tests run and any remaining mock behavior. This plan authorizes no live service submissions and does not claim the pending features already exist.
 
@@ -203,7 +218,7 @@ Create payload example (all values fictional):
 }
 ```
 
-`email` is optional before account creation. `managerId` may be omitted or match the current EM. Start date must be a valid ISO calendar date. Groups must contain 1–30 explicit nonempty names; duplicate names are collapsed. `adminRequired` must be boolean. This platform slice does not yet support editing hire requirements after creation.
+`email` is optional before account creation. `managerId` may be omitted or match the current EM. Start date must be a valid ISO calendar date. Omit `requestedGroups` and `adminRequired` to use the selected saved profile. An explicit `requestedGroups` override requires 1–60 nonempty names and replaces only the profile portion; 0–30 network location groups are always added. Duplicate names are collapsed. `adminRequired`, when provided, must be boolean. Existing plans keep their saved requirements; editing hire requirements after creation is not supported.
 
 Example account payload: `{ "adId": "DEMO-TAYLOR", "workEmail": "taylor@example.invalid", "laptopId": "DEMO-LT-001" }`.
 
@@ -229,6 +244,8 @@ Store methods are `get(table,id)`, `list(table,{hireId,offset,limit})`, and `put
 Backend entitlement creation is intentionally pending. Reuse the existing queue's reviewed payload and transitions when implementing it. Its browser-local email identity must migrate explicitly to immutable hire IDs. Do not silently merge localStorage records or update actual access/setup states. The original planner remains at `/planner`, and its modules have not been rewritten by Track A.
 
 ## Track A delivery evidence
+
+The initial delivery evidence below is historical (schema v1 and earlier fictional display names). Current code uses schema v3, Alex Example as EM and Vibgy Joseph as the Toronto hire. Profile/location behavior and the latest 44-test result are recorded at the end of this document.
 
 Implementation branch: `feat/platform-dashboards`.
 
