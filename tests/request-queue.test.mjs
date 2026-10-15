@@ -8,7 +8,7 @@ const hire={name:'Alex Example',email:'Alex@Example.invalid',manager:'Taylor',gi
 const prepare=(id='trader-jira',person=hire)=>prepareRequest(profile,profile.access.find(x=>x.id===id),person,'Access is required to work on Dealertrack development tickets.');
 test('one request per entitlement, required details and justification validated',()=>{
   const request=prepare();assert.match(request.text,/Trader Jira/);assert.doesNotMatch(request.text,/AS24 Jira|Confluence/);assert.equal(request.employee.email,'alex@example.invalid');
-  assert.throws(()=>prepare('admin'),/form or a team/);assert.throws(()=>prepare('sharepoint'),/form or a team/);
+  assert.equal(prepare('admin').accessId,'admin');assert.throws(()=>prepare('sharepoint'),/form or a team/);
   assert.throws(()=>prepare('aws',{...hire,awsGroup:''}),/awsGroup/);
   assert.throws(()=>prepare('trader-jira',{...hire,email:'invalid'}),/email/);
   assert.throws(()=>prepareRequest(profile,profile.access[1],hire,'short'),/justification/);
